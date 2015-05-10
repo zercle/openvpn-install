@@ -7,12 +7,10 @@
 # your Debian/Ubuntu/CentOS box. It has been designed to be as unobtrusive and
 # universal as possible.
 
-
 if [[ "$USER" != 'root' ]]; then
 	echo "Sorry, you need to run this as root"
 	exit
 fi
-
 
 if [[ ! -e /dev/net/tun ]]; then
 	echo "TUN/TAP is not available"
@@ -64,6 +62,13 @@ geteasyrsa () {
 	rm -rf ~/easy-rsa.tar.gz
 }
 
+# Copy udp server config and convert to 443 ssl server config
+gensslserver() {
+	cp -f /etc/openvpn/server.conf /etc/openvpn/server443.conf
+	sed -i "s|port 1194|port 443|" /etc/openvpn/server443.conf
+	sed -i "s|proto udp|proto tcp|" /etc/openvpn/server443.conf
+	sed -i "s|172.16.69.0|172.16.69.128|" /etc/openvpn/server443.conf
+}
 
 # Try to get our IP from the system and fallback to the Internet.
 # I do this to make the script compatible with NATed servers (lowendspirit.com)
@@ -93,9 +98,21 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			echo "Tell me a name for the client cert"
 			echo "Please, use one word only, no special characters"
 			read -p "Client name: " -e -i client CLIENT
+			read -p "Client COUNTRY: " -e -i "TH" CLIENT_COUNTRY
+			read -p "Client PROVINCE: " -e -i "Khon Kaen" CLIENT_PROVINCE
+			read -p "Client CITY: " -e -i "Muang" CLIENT_CITY
+			read -p "Client ORG: " -e -i "Dynamic Dev Co., Ltd." CLIENT_ORG
+			read -p "Client OU: " -e -i "Developer" CLIENT_OU
+			read -p "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
 			cd /etc/openvpn/easy-rsa/2.0/
 			source ./vars
 			# build-key for the client
+			export KEY_COUNTRY="$CLIENT_COUNTRY"
+			export KEY_PROVINCE="$CLIENT_PROVINCE"
+			export KEY_CITY="$CLIENT_CITY"
+			export KEY_ORG="$CLIENT_ORG"
+			export KEY_OU="$CLIENT_OU"
+			export KEY_EMAIL="$CLIENT_EMAIL"
 			export KEY_CN="$CLIENT"
 			export EASY_RSA="${EASY_RSA:-.}"
 			"$EASY_RSA/pkitool" $CLIENT
@@ -142,7 +159,9 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 				rm -rf /etc/openvpn
 				rm -rf /usr/share/doc/openvpn*
 				sed -i '/--dport 53 -j REDIRECT --to-port/d' $RCLOCAL
-				sed -i '/iptables -t nat -A POSTROUTING -s 10.8.0.0/d' $RCLOCAL
+				sed -i '/iptables -t nat -A POSTROUTING -s 172.16.69.0/d' $RCLOCAL
+				sed -i '/iptables -t nat -A POSTROUTING -s 172.16.69.128/d' $RCLOCAL
+				sed -i '/iptables -A FORWARD/d' $RCLOCAL
 				echo ""
 				echo "OpenVPN removed!"
 			else
@@ -173,37 +192,60 @@ else
 	echo "This can be useful to connect under restrictive networks"
 	read -p "Listen at port 53 [y/n]: " -e -i n ALTPORT
 	echo ""
+	echo "Do you want OpenVPN to be available at port 443 too?"
+	echo "This can be useful to connect under restrictive networks"
+	read -p "Listen at port 443 [y/n]: " -e -i y SSLPORT
+	echo ""
 	echo "Do you want to enable internal networking for the VPN?"
 	echo "This can allow VPN clients to communicate between them"
 	read -p "Allow internal networking [y/n]: " -e -i n INTERNALNETWORK
 	echo ""
 	echo "What DNS do you want to use with the VPN?"
 	echo "   1) Current system resolvers"
-	echo "   2) OpenDNS"
-	echo "   3) Level 3"
-	echo "   4) NTT"
-	echo "   5) Hurricane Electric"
-	echo "   6) Yandex"
-	read -p "DNS [1-6]: " -e -i 1 DNS
+	echo "   2) Norton ConnectSafe"
+	echo "   3) Google Public DNS"
+	echo "   4) Norton ConnectSafe + Google Public DNS"
+	echo "   5) OpenDNS"
+	echo "   6) Level 3"
+	echo "   7) NTT"
+	echo "   8) Hurricane Electric"
+	echo "   9) Yandex"
+	read -p "DNS [1-9]: " -e -i 1 DNS
+	echo ""
+	echo "Tell me detail for server cert"
+	echo "Please, use one word only, no special characters"
+	read -p "Server COUNTRY: " -e -i "TH" SERVER_COUNTRY
+	read -p "Server PROVINCE: " -e -i "Khon Kaen" SERVER_PROVINCE
+	read -p "Server CITY: " -e -i "Muang" SERVER_CITY
+	read -p "Server ORG: " -e -i "Dynamic Dev Co., Ltd." SERVER_ORG
+	read -p "Server OU: " -e -i "Server" SERVER_OU
+	read -p "Server Admin EMAIL: " -e -i "admin@domain.com" SERVER_EMAIL
 	echo ""
 	echo "Finally, tell me your name for the client cert"
 	echo "Please, use one word only, no special characters"
 	read -p "Client name: " -e -i client CLIENT
+	read -p "Client COUNTRY: " -e -i "TH" CLIENT_COUNTRY
+	read -p "Client PROVINCE: " -e -i "Khon Kaen" CLIENT_PROVINCE
+	read -p "Client CITY: " -e -i "Muang" CLIENT_CITY
+	read -p "Client ORG: " -e -i "Dynamic Dev Co., Ltd." CLIENT_ORG
+	read -p "Client OU: " -e -i "Developer" CLIENT_OU
+	read -p "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
 	echo ""
 	echo "Okay, that was all I needed. We are ready to setup your OpenVPN server now"
 	read -n1 -r -p "Press any key to continue..."
 	if [[ "$OS" = 'debian' ]]; then
 		apt-get update
-		apt-get install openvpn iptables openssl -y
+		apt-get -y install openvpn iptables openssl fail2ban git
 		cp -R /usr/share/doc/openvpn/examples/easy-rsa/ /etc/openvpn
+		cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
 		# easy-rsa isn't available by default for Debian Jessie and newer
 		if [[ ! -d /etc/openvpn/easy-rsa/2.0/ ]]; then
 			geteasyrsa
 		fi
 	else
 		# Else, the distro is CentOS
-		yum install epel-release -y
-		yum install openvpn iptables openssl wget -y
+		yum install -y epel-release
+		yum install -y openvpn iptables openssl wget git
 		geteasyrsa
 	fi
 	cd /etc/openvpn/easy-rsa/2.0/
@@ -220,9 +262,21 @@ else
 	export EASY_RSA="${EASY_RSA:-.}"
 	"$EASY_RSA/pkitool" --initca $*
 	# Same as the last time, we are going to run build-key-server
+	export KEY_COUNTRY="$SERVER_COUNTRY"
+	export KEY_PROVINCE="$SERVER_PROVINCE"
+	export KEY_CITY="$SERVER_CITY"
+	export KEY_ORG="$SERVER_ORG"
+	export KEY_OU="$SERVER_OU"
+	export KEY_EMAIL="$SERVER_EMAIL"
 	export EASY_RSA="${EASY_RSA:-.}"
 	"$EASY_RSA/pkitool" --server server
 	# Now the client keys. We need to set KEY_CN or the stupid pkitool will cry
+	export KEY_COUNTRY="$CLIENT_COUNTRY"
+	export KEY_PROVINCE="$CLIENT_PROVINCE"
+	export KEY_CITY="$CLIENT_CITY"
+	export KEY_ORG="$CLIENT_ORG"
+	export KEY_OU="$CLIENT_OU"
+	export KEY_EMAIL="$CLIENT_EMAIL"
 	export KEY_CN="$CLIENT"
 	export EASY_RSA="${EASY_RSA:-.}"
 	"$EASY_RSA/pkitool" $CLIENT
@@ -241,6 +295,11 @@ else
 	sed -i 's|dh dh1024.pem|dh dh2048.pem|' server.conf
 	sed -i 's|;push "redirect-gateway def1 bypass-dhcp"|push "redirect-gateway def1 bypass-dhcp"|' server.conf
 	sed -i "s|port 1194|port $PORT|" server.conf
+	sed -i "s|;duplicate-cn|duplicate-cn|" server.conf
+	sed -i "s|server 10.8.0.0 255.255.255.0|server 172.16.69.0 255.255.255.128|" server.conf
+	sed -i "s|;push \"route 192.168.10.0 255.255.255.0\"|push \"route 192.168.0.0 255.255.0.0 net_gateway\"|" server.conf
+	sed -i "s|;cipher AES-128-CBC   # AES|cipher AES-256-CBC   # AES|" server.conf
+	sed -i "s|;log-append  openvpn.log|log-append  /var/log/openvpn.log|" server.conf
 	# DNS
 	case $DNS in
 		1) 
@@ -250,21 +309,33 @@ else
 		done
 		;;
 		2)
+		sed -i 's|;push "dhcp-option DNS 208.67.222.222"|push "dhcp-option DNS 199.85.127.10"|' server.conf
+		sed -i 's|;push "dhcp-option DNS 208.67.220.220"|push "dhcp-option DNS 199.85.126.10"|' server.conf
+		;;
+		3)
+		sed -i 's|;push "dhcp-option DNS 208.67.222.222"|push "dhcp-option DNS 8.8.4.4"|' server.conf
+		sed -i 's|;push "dhcp-option DNS 208.67.220.220"|push "dhcp-option DNS 8.8.8.8"|' server.conf
+		;;
+		4)
+		sed -i 's|;push "dhcp-option DNS 208.67.222.222"|push "dhcp-option DNS 199.85.127.10"|' server.conf
+		sed -i 's|;push "dhcp-option DNS 208.67.220.220"|push "dhcp-option DNS 8.8.4.4"|' server.conf
+		;;
+		5)
 		sed -i 's|;push "dhcp-option DNS 208.67.222.222"|push "dhcp-option DNS 208.67.222.222"|' server.conf
 		sed -i 's|;push "dhcp-option DNS 208.67.220.220"|push "dhcp-option DNS 208.67.220.220"|' server.conf
 		;;
-		3) 
+		6) 
 		sed -i 's|;push "dhcp-option DNS 208.67.222.222"|push "dhcp-option DNS 4.2.2.2"|' server.conf
 		sed -i 's|;push "dhcp-option DNS 208.67.220.220"|push "dhcp-option DNS 4.2.2.4"|' server.conf
 		;;
-		4) 
+		7) 
 		sed -i 's|;push "dhcp-option DNS 208.67.222.222"|push "dhcp-option DNS 129.250.35.250"|' server.conf
 		sed -i 's|;push "dhcp-option DNS 208.67.220.220"|push "dhcp-option DNS 129.250.35.251"|' server.conf
 		;;
-		5) 
+		8) 
 		sed -i 's|;push "dhcp-option DNS 208.67.222.222"|push "dhcp-option DNS 74.82.42.42"|' server.conf
 		;;
-		6) 
+		9) 
 		sed -i 's|;push "dhcp-option DNS 208.67.222.222"|push "dhcp-option DNS 77.88.8.8"|' server.conf
 		sed -i 's|;push "dhcp-option DNS 208.67.220.220"|push "dhcp-option DNS 77.88.8.1"|' server.conf
 		;;
@@ -288,20 +359,34 @@ else
 	# Avoid an unneeded reboot
 	echo 1 > /proc/sys/net/ipv4/ip_forward
 	# Set iptables
+	iptables -P INPUT ACCEPT
+	iptables -P OUTPUT ACCEPT
+	iptables -P FORWARD ACCEPT
+	iptables -F INPUT
+	iptables -F OUTPUT
+	iptables -F FORWARD
 	if [[ "$INTERNALNETWORK" = 'y' ]]; then
-		iptables -t nat -A POSTROUTING -s 10.8.0.0/24 ! -d 10.8.0.0/24 -j SNAT --to $IP
-		sed -i "1 a\iptables -t nat -A POSTROUTING -s 10.8.0.0/24 ! -d 10.8.0.0/24 -j SNAT --to $IP" $RCLOCAL
+		iptables -t nat -A POSTROUTING -s 172.16.69.0/25 ! -d 172.16.69.0/25 -j SNAT --to $IP
+		sed -i "1 a\iptables -t nat -A POSTROUTING -s 172.16.69.0/25 ! -d 172.16.69.0/25 -j SNAT --to $IP" $RCLOCAL
 	else
-		iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP
-		sed -i "1 a\iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP" $RCLOCAL
+		iptables -t nat -A POSTROUTING -s 172.16.69.0/24 -j SNAT --to $IP
+		sed -i "1 a\iptables -t nat -A POSTROUTING -s 172.16.69.0/24 -j SNAT --to $IP" $RCLOCAL
+	fi
+	iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+	sed -i "1 a\iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT" $RCLOCAL
+	# If user want ssl server
+	if [[ "$SSLPORT" = 'y' ]]; then
+		gensslserver
 	fi
 	# And finally, restart OpenVPN
 	if [[ "$OS" = 'debian' ]]; then
 		# Little hack to check for systemd
 		if pgrep systemd-journal; then
 			systemctl restart openvpn@server.service
+			systemctl restart fail2ban
 		else
 			/etc/init.d/openvpn restart
+			/etc/init.d/fail2ban restart
 		fi
 	else
 		if pgrep systemd-journal; then
@@ -328,7 +413,18 @@ else
 	fi
 	# IP/port set on the default client.conf so we can add further users
 	# without asking for them
-	sed -i "s|remote my-server-1 1194|remote $IP $PORT|" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
+	sed -i "s|proto udp|;proto udp|" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
+	sed -i "s|remote my-server-1 1194|remote $IP $PORT udp|" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
+	sed -i "/resolv-retry infinite/i\server-poll-timeout 4" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
+	sed -i "s|;cipher x|cipher AES-256-CBC   # AES|" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
+	# If user want 53 server
+	if [[ "$ALTPORT" = 'y' ]]; then
+		sed -i "/;remote my-server-2 1194/i\remote $IP 53 udp" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
+	fi
+	# If user want ssl server
+	if [[ "$SSLPORT" = 'y' ]]; then
+		sed -i "s|;remote my-server-2 1194|remote $IP 443 tcp|" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
+	fi
 	# Generate the client.ovpn
 	newclient "$CLIENT"
 	echo ""
