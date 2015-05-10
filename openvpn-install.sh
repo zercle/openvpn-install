@@ -38,19 +38,19 @@ fi
 
 newclient () {
 	# Generates the client.ovpn
-	cp /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf ~/$1.ovpn
-	sed -i "/ca ca.crt/d" ~/$1.ovpn
-	sed -i "/cert client.crt/d" ~/$1.ovpn
-	sed -i "/key client.key/d" ~/$1.ovpn
-	echo "<ca>" >> ~/$1.ovpn
-	cat /etc/openvpn/easy-rsa/2.0/keys/ca.crt >> ~/$1.ovpn
-	echo "</ca>" >> ~/$1.ovpn
-	echo "<cert>" >> ~/$1.ovpn
-	cat /etc/openvpn/easy-rsa/2.0/keys/$1.crt >> ~/$1.ovpn
-	echo "</cert>" >> ~/$1.ovpn
-	echo "<key>" >> ~/$1.ovpn
-	cat /etc/openvpn/easy-rsa/2.0/keys/$1.key >> ~/$1.ovpn
-	echo "</key>" >> ~/$1.ovpn
+	cp /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf ~/"$1".ovpn
+	sed -i "/ca ca.crt/d" ~/"$1".ovpn
+	sed -i "/cert client.crt/d" ~/"$1".ovpn
+	sed -i "/key client.key/d" ~/"$1".ovpn
+	echo "<ca>" >> ~/"$1".ovpn
+	cat /etc/openvpn/easy-rsa/2.0/keys/ca.crt >> ~/"$1".ovpn
+	echo "</ca>" >> ~/"$1".ovpn
+	echo "<cert>" >> ~/"$1".ovpn
+	cat /etc/openvpn/easy-rsa/2.0/keys/$1.crt >> ~/"$1".ovpn
+	echo "</cert>" >> ~/"$1".ovpn
+	echo "<key>" >> ~/"$1".ovpn
+	cat /etc/openvpn/easy-rsa/2.0/keys/$1.key >> ~/"$1".ovpn
+	echo "</key>" >> ~/"$1".ovpn
 }
 
 geteasyrsa () {
@@ -115,7 +115,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			export KEY_EMAIL="$CLIENT_EMAIL"
 			export KEY_CN="$CLIENT"
 			export EASY_RSA="${EASY_RSA:-.}"
-			"$EASY_RSA/pkitool" $CLIENT
+			"$EASY_RSA/pkitool" "$CLIENT"
 			# Generate the client.ovpn
 			newclient "$CLIENT"
 			echo ""
@@ -128,7 +128,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			read -p "Client name: " -e -i client CLIENT
 			cd /etc/openvpn/easy-rsa/2.0/
 			. /etc/openvpn/easy-rsa/2.0/vars
-			. /etc/openvpn/easy-rsa/2.0/revoke-full $CLIENT
+			. /etc/openvpn/easy-rsa/2.0/revoke-full "$CLIENT"
 			# If it's the first time revoking a cert, we need to add the crl-verify line
 			if ! grep -q "crl-verify" "/etc/openvpn/server.conf"; then
 				echo "crl-verify /etc/openvpn/easy-rsa/2.0/keys/crl.pem" >> "/etc/openvpn/server.conf"
@@ -183,7 +183,7 @@ else
 	echo ""
 	echo "First I need to know the IPv4 address of the network interface you want OpenVPN"
 	echo "listening to."
-	read -p "IP address: " -e -i $IP IP
+	read -p "IP address: " -e -i "$IP" IP
 	echo ""
 	echo "What port do you want for OpenVPN?"
 	read -p "Port: " -e -i 1194 PORT
@@ -279,7 +279,7 @@ else
 	export KEY_EMAIL="$CLIENT_EMAIL"
 	export KEY_CN="$CLIENT"
 	export EASY_RSA="${EASY_RSA:-.}"
-	"$EASY_RSA/pkitool" $CLIENT
+	"$EASY_RSA/pkitool" "$CLIENT"
 	# DH params
 	. /etc/openvpn/easy-rsa/2.0/build-dh
 	# Let's configure the server
@@ -342,7 +342,7 @@ else
 	esac
 	# Listen at port 53 too if user wants that
 	if [[ "$ALTPORT" = 'y' ]]; then
-		iptables -t nat -A PREROUTING -p udp -d $IP --dport 53 -j REDIRECT --to-port $PORT
+		iptables -t nat -A PREROUTING -p udp -d $IP --dport 53 -j REDIRECT --to-port "$PORT"
 		sed -i "1 a\iptables -t nat -A PREROUTING -p udp -d $IP --dport 53 -j REDIRECT --to-port $PORT" $RCLOCAL
 	fi
 	# Enable net.ipv4.ip_forward for the system
@@ -359,17 +359,20 @@ else
 	# Avoid an unneeded reboot
 	echo 1 > /proc/sys/net/ipv4/ip_forward
 	# Set iptables
+	iptables -F
+	iptables -X
+	iptables -t nat -F
+	iptables -t nat -X
+	iptables -t mangle -F
+	iptables -t mangle -X
 	iptables -P INPUT ACCEPT
-	iptables -P OUTPUT ACCEPT
 	iptables -P FORWARD ACCEPT
-	iptables -F INPUT
-	iptables -F OUTPUT
-	iptables -F FORWARD
+	iptables -P OUTPUT ACCEPT
 	if [[ "$INTERNALNETWORK" = 'y' ]]; then
-		iptables -t nat -A POSTROUTING -s 172.16.69.0/25 ! -d 172.16.69.0/25 -j SNAT --to $IP
+		iptables -t nat -A POSTROUTING -s 172.16.69.0/25 ! -d 172.16.69.0/25 -j SNAT --to "$IP"
 		sed -i "1 a\iptables -t nat -A POSTROUTING -s 172.16.69.0/25 ! -d 172.16.69.0/25 -j SNAT --to $IP" $RCLOCAL
 	else
-		iptables -t nat -A POSTROUTING -s 172.16.69.0/24 -j SNAT --to $IP
+		iptables -t nat -A POSTROUTING -s 172.16.69.0/24 -j SNAT --to "$IP"
 		sed -i "1 a\iptables -t nat -A POSTROUTING -s 172.16.69.0/24 -j SNAT --to $IP" $RCLOCAL
 	fi
 	iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
