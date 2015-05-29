@@ -311,6 +311,8 @@ else
 	sed -i "s|server 10.8.0.0 255.255.255.0|server 172.16.69.0 255.255.255.128|" server.conf
 	sed -i "s|;push \"route 192.168.10.0 255.255.255.0\"|push \"route 192.168.0.0 255.255.0.0 net_gateway\"|" server.conf
 	sed -i "s|;cipher AES-128-CBC   # AES|cipher AES-256-CBC   # AES|" server.conf
+	sed -i "/cipher AES-256-CBC   # AES/i\keysize 256" server.conf
+	sed -i "/;tls-auth ta.key 0 # This file is secret/i\auth SHA256" server.conf
 	sed -i "s|;log-append  openvpn.log|log-append  /var/log/openvpn.log|" server.conf
 	# DNS
 	case $DNS in
@@ -434,6 +436,8 @@ else
 	sed -i "s|remote my-server-1 1194|remote $IP $PORT udp|" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
 	sed -i "/resolv-retry infinite/i\server-poll-timeout 4" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
 	sed -i "s|;cipher x|cipher AES-256-CBC   # AES|" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
+	sed -i "/cipher AES-256-CBC   # AES/i\keysize 256" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
+	sed -i "/;tls-auth ta.key 1/i\auth SHA256" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
 	# If user want 53 server
 	if [[ "$ALTPORT" = 'y' ]]; then
 		sed -i "/;remote my-server-2 1194/i\remote $IP 53 udp" /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf
