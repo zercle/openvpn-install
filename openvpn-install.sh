@@ -104,6 +104,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			read -p "Client ORG: " -e -i "Dynamic Dev Co., Ltd." CLIENT_ORG
 			read -p "Client OU: " -e -i "Developer" CLIENT_OU
 			read -p "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
+			read -p "Client Cert expire time: " -e -i "365" CLIENT_EXPIRE
 			cd /etc/openvpn/easy-rsa/2.0/
 			source ./vars
 			# build-key for the client
@@ -114,6 +115,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			export KEY_OU="$CLIENT_OU"
 			export KEY_EMAIL="$CLIENT_EMAIL"
 			export KEY_CN="$CLIENT"
+			export KEY_EXPIRE="$CLIENT_EXPIRE"
 			export EASY_RSA="${EASY_RSA:-.}"
 			"$EASY_RSA/pkitool" "$CLIENT"
 			# Generate the client.ovpn
@@ -200,6 +202,9 @@ else
 	echo "This can allow VPN clients to communicate between them"
 	read -p "Allow internal networking [y/n]: " -e -i n INTERNALNETWORK
 	echo ""
+	echo "Do you want to enable multiple connection for single client cert?"
+	read -p "Allow multiple connection for single client cert [y/n]: " -e -i n DUPLICATE_CN
+	echo ""
 	echo "What DNS do you want to use with the VPN?"
 	echo "   1) Current system resolvers"
 	echo "   2) Norton ConnectSafe"
@@ -230,6 +235,7 @@ else
 	read -p "Client ORG: " -e -i "Dynamic Dev Co., Ltd." CLIENT_ORG
 	read -p "Client OU: " -e -i "Developer" CLIENT_OU
 	read -p "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
+	read -p "Client Cert expire time: " -e -i "365" CLIENT_EXPIRE
 	echo ""
 	echo "Okay, that was all I needed. We are ready to setup your OpenVPN server now"
 	read -n1 -r -p "Press any key to continue..."
@@ -252,7 +258,7 @@ else
 	# Let's fix one thing first...
 	cp -u -p openssl-1.0.0.cnf openssl.cnf
 	# Fuck you NSA - 1024 bits was the default for Debian Wheezy and older
-	sed -i 's|export KEY_SIZE=1024|export KEY_SIZE=2048|' /etc/openvpn/easy-rsa/2.0/vars
+	sed -i 's|export KEY_SIZE=1024|export KEY_SIZE=4096|' /etc/openvpn/easy-rsa/2.0/vars
 	# Create the PKI
 	. /etc/openvpn/easy-rsa/2.0/vars
 	. /etc/openvpn/easy-rsa/2.0/clean-all
@@ -278,6 +284,7 @@ else
 	export KEY_OU="$CLIENT_OU"
 	export KEY_EMAIL="$CLIENT_EMAIL"
 	export KEY_CN="$CLIENT"
+	export KEY_EXPIRE="$CLIENT_EXPIRE"
 	export EASY_RSA="${EASY_RSA:-.}"
 	"$EASY_RSA/pkitool" "$CLIENT"
 	# DH params
@@ -289,13 +296,15 @@ else
 	fi
 	cp server.conf /etc/openvpn/
 	cd /etc/openvpn/easy-rsa/2.0/keys
-	cp ca.crt ca.key dh2048.pem server.crt server.key /etc/openvpn
+	cp ca.crt ca.key dh4096.pem server.crt server.key /etc/openvpn
 	cd /etc/openvpn/
 	# Set the server configuration
-	sed -i 's|dh dh1024.pem|dh dh2048.pem|' server.conf
+	sed -i 's|dh dh1024.pem|dh dh4096.pem|' server.conf
 	sed -i 's|;push "redirect-gateway def1 bypass-dhcp"|push "redirect-gateway def1 bypass-dhcp"|' server.conf
 	sed -i "s|port 1194|port $PORT|" server.conf
+	if [[ $DUPLICATE_CN = 'y' ]]; then
 	sed -i "s|;duplicate-cn|duplicate-cn|" server.conf
+	fi	
 	sed -i "s|server 10.8.0.0 255.255.255.0|server 172.16.69.0 255.255.255.128|" server.conf
 	sed -i "s|;push \"route 192.168.10.0 255.255.255.0\"|push \"route 192.168.0.0 255.255.0.0 net_gateway\"|" server.conf
 	sed -i "s|;cipher AES-128-CBC   # AES|cipher AES-256-CBC   # AES|" server.conf
@@ -366,7 +375,7 @@ else
 	iptables -t mangle -F
 	iptables -t mangle -X
 	iptables -P INPUT ACCEPT
-	iptables -P FORWARD ACCEPT
+	iptables -P FORWARD DROP
 	iptables -P OUTPUT ACCEPT
 	if [[ "$INTERNALNETWORK" = 'y' ]]; then
 		iptables -t nat -A POSTROUTING -s 172.16.69.0/25 ! -d 172.16.69.0/25 -j SNAT --to "$IP"
@@ -411,7 +420,7 @@ else
 		echo "If that's not the case, just ignore this and leave the next field blank"
 		read -p "External IP: " -e USEREXTERNALIP
 		if [[ "$USEREXTERNALIP" != "" ]]; then
-			IP=$USEREXTERNALIP
+			IP="$USEREXTERNALIP"
 		fi
 	fi
 	# IP/port set on the default client.conf so we can add further users
