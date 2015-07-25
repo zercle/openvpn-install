@@ -18,7 +18,7 @@ if [[ ! -e /dev/net/tun ]]; then
 fi
 
 
-if grep -q "CentOS release 5" "/etc/redhat-release"; then
+if grep -qs "CentOS release 5" "/etc/redhat-release"; then
 	echo "CentOS 5 is too old and not supported"
 	exit
 fi
@@ -38,28 +38,19 @@ fi
 
 newclient () {
 	# Generates the client.ovpn
-	cp /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf ~/"$1".ovpn
-	sed -i "/ca ca.crt/d" ~/"$1".ovpn
-	sed -i "/cert client.crt/d" ~/"$1".ovpn
-	sed -i "/key client.key/d" ~/"$1".ovpn
-	echo "<ca>" >> ~/"$1".ovpn
-	cat /etc/openvpn/easy-rsa/2.0/keys/ca.crt >> ~/"$1".ovpn
-	echo "</ca>" >> ~/"$1".ovpn
-	echo "<cert>" >> ~/"$1".ovpn
-	cat /etc/openvpn/easy-rsa/2.0/keys/$1.crt >> ~/"$1".ovpn
-	echo "</cert>" >> ~/"$1".ovpn
-	echo "<key>" >> ~/"$1".ovpn
-	cat /etc/openvpn/easy-rsa/2.0/keys/$1.key >> ~/"$1".ovpn
-	echo "</key>" >> ~/"$1".ovpn
-}
-
-geteasyrsa () {
-	wget --no-check-certificate -O ~/easy-rsa.tar.gz https://github.com/OpenVPN/easy-rsa/archive/2.2.2.tar.gz
-	tar xzf ~/easy-rsa.tar.gz -C ~/
-	mkdir -p /etc/openvpn/easy-rsa/2.0/
-	cp ~/easy-rsa-2.2.2/easy-rsa/2.0/* /etc/openvpn/easy-rsa/2.0/
-	rm -rf ~/easy-rsa-2.2.2
-	rm -rf ~/easy-rsa.tar.gz
+	cp /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf ~/ovpn/"$1".ovpn
+	sed -i "/ca ca.crt/d" ~/ovpn/"$1".ovpn
+	sed -i "/cert client.crt/d" ~/ovpn/"$1".ovpn
+	sed -i "/key client.key/d" ~/ovpn/"$1".ovpn
+	echo "<ca>" >> ~/ovpn/"$1".ovpn
+	cat /etc/openvpn/easy-rsa/2.0/keys/ca.crt >> ~/ovpn/"$1".ovpn
+	echo "</ca>" >> ~/ovpn/"$1".ovpn
+	echo "<cert>" >> ~/ovpn/"$1".ovpn
+	cat /etc/openvpn/easy-rsa/2.0/keys/$1.crt >> ~/ovpn/"$1".ovpn
+	echo "</cert>" >> ~/ovpn/"$1".ovpn
+	echo "<key>" >> ~/ovpn/"$1".ovpn
+	cat /etc/openvpn/easy-rsa/2.0/keys/$1.key >> ~/ovpn/"$1".ovpn
+	echo "</key>" >> ~/ovpn/"$1".ovpn
 }
 
 # Copy udp server config and convert to 443 ssl server config
@@ -78,19 +69,16 @@ if [[ "$IP" = "" ]]; then
 		IP=$(wget -qO- ipv4.icanhazip.com)
 fi
 
-
 if [[ -e /etc/openvpn/server.conf ]]; then
 	while :
 	do
 	clear
 		echo "Looks like OpenVPN is already installed"
 		echo "What do you want to do?"
-		echo ""
-		echo "1) Add a cert for a new user"
-		echo "2) Revoke existing user cert"
-		echo "3) Remove OpenVPN"
-		echo "4) Exit"
-		echo ""
+		echo "   1) Add a cert for a new user"
+		echo "   2) Revoke existing user cert"
+		echo "   3) Remove OpenVPN"
+		echo "   4) Exit"
 		read -p "Select an option [1-4]: " option
 		case $option in
 			1) 
@@ -121,13 +109,26 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			# Generate the client.ovpn
 			newclient "$CLIENT"
 			echo ""
-			echo "Client $CLIENT added, certs available at ~/$CLIENT.ovpn"
+			echo "Client $CLIENT added, certs available at ~/ovpn/$CLIENT.ovpn"
 			exit
 			;;
 			2)
+			# Show existing clients list for revoke
+			NUMBEROFCLIENTS=$(tail -n +2 /etc/openvpn/easy-rsa/2.0/keys/index.txt | grep "^V" | wc -l)
+			if [[ "$NUMBEROFCLIENTS" = '0' ]]; then
+				echo ""
+				echo "You have no existing clients!"
+				exit
+			fi
 			echo ""
-			echo "Tell me the existing client name"
-			read -p "Client name: " -e -i client CLIENT
+			echo "Select the existing client certificate you want to revoke"
+			tail -n +2 /etc/openvpn/easy-rsa/2.0/keys/index.txt | grep "^V" | cut -d '/' -f 7 | cut -d '=' -f 2 | nl -s ') '
+			if [[ "$NUMBEROFCLIENTS" = '1' ]]; then
+				read -p "Select one client [1]: " CLIENTNUMBER
+			else
+				read -p "Select one client [1-$NUMBEROFCLIENTS]: " CLIENTNUMBER
+			fi
+			CLIENT=$(tail -n +2 /etc/openvpn/easy-rsa/2.0/keys/index.txt | grep "^V" | cut -d '/' -f 7 | cut -d '=' -f 2 | sed -n "$CLIENTNUMBER"p)
 			cd /etc/openvpn/easy-rsa/2.0/
 			. /etc/openvpn/easy-rsa/2.0/vars
 			. /etc/openvpn/easy-rsa/2.0/revoke-full "$CLIENT"
@@ -245,18 +246,25 @@ else
 	if [[ "$OS" = 'debian' ]]; then
 		apt-get update
 		apt-get -y install openvpn iptables openssl fail2ban git
-		cp -R /usr/share/doc/openvpn/examples/easy-rsa/ /etc/openvpn
 		cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
-		# easy-rsa isn't available by default for Debian Jessie and newer
-		if [[ ! -d /etc/openvpn/easy-rsa/2.0/ ]]; then
-			geteasyrsa
-		fi
 	else
 		# Else, the distro is CentOS
 		yum install -y epel-release
 		yum install -y openvpn iptables openssl wget git
-		geteasyrsa
 	fi
+	# An old version of easy-rsa was available by default in some openvpn packages
+	if [[ -d /etc/openvpn/easy-rsa/2.0/ ]]; then
+		rm -f /etc/openvpn/easy-rsa/2.0/
+	fi
+	# Get easy-rsa
+	wget -c --no-check-certificate -O ~/easy-rsa.tar.gz https://github.com/OpenVPN/easy-rsa/archive/2.2.2.tar.gz
+	tar xzf ~/easy-rsa.tar.gz -C ~/
+	mkdir -p /etc/openvpn/easy-rsa/2.0/
+	# Copy easy-rsa to openvpn directory
+	cp ~/easy-rsa-2.2.2/easy-rsa/2.0/* /etc/openvpn/easy-rsa/2.0/
+	# Clear downloaded files
+	rm -rf ~/easy-rsa-2.2.2
+	rm -rf ~/easy-rsa.tar.gz
 	cd /etc/openvpn/easy-rsa/2.0/
 	# Let's fix one thing first...
 	cp -u -p openssl-1.0.0.cnf openssl.cnf
@@ -451,6 +459,6 @@ else
 	echo ""
 	echo "Finished!"
 	echo ""
-	echo "Your client config is available at ~/$CLIENT.ovpn"
+	echo "Your client config is available at ~/ovpn/$CLIENT.ovpn"
 	echo "If you want to add more clients, you simply need to run this script another time!"
 fi
