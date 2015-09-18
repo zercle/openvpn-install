@@ -429,7 +429,6 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 	# client-common.txt is created so we have a template to add further users later
 	echo "client
 dev tun
-proto udp
 remote $IP $PORT udp" > /etc/openvpn/client-common.txt
 	# If user want 53 server
 	if [[ "$ALTPORT" = 'y' ]]; then
