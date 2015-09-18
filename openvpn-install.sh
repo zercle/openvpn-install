@@ -45,6 +45,10 @@ newclient () {
 	echo "route-nopull" >> ~/ovpn/"$1"_local.ovpn
 	echo "route remote_host 255.255.255.255 net_gateway" >> ~/ovpn/"$1"_local.ovpn
 	echo "route 172.16.69.0 255.255.255.0 vpn_gateway" >> ~/ovpn/"$1"_local.ovpn
+	echo "route 0.0.0.0 192.0.0.0 net_gateway" >> ~/ovpn/"$1"_local.ovpn
+	echo "route 64.0.0.0 192.0.0.0 net_gateway" >> ~/ovpn/"$1"_local.ovpn
+	echo "route 128.0.0.0 192.0.0.0 net_gateway" >> ~/ovpn/"$1"_local.ovpn
+	echo "route 192.0.0.0 192.0.0.0 net_gateway" >> ~/ovpn/"$1"_local.ovpn
 	echo "<ca>" >> ~/ovpn/"$1"_local.ovpn
 	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/ovpn/"$1"_local.ovpn
 	echo "</ca>" >> ~/ovpn/"$1"_local.ovpn
@@ -288,9 +292,10 @@ dh dh.pem
 topology subnet
 server 172.16.69.0 255.255.255.0
 ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
-	echo 'push "route 10.0.0.0 255.0.0.0 net_gateway"' >> /etc/openvpn/server.conf
-	echo 'push "route 192.168.0.0 255.255.0.0 net_gateway"' >> /etc/openvpn/server.conf
 	echo 'push "redirect-gateway def1 bypass-dhcp"' >> /etc/openvpn/server.conf
+	echo 'push "route 10.0.0.0 255.0.0.0 net_gateway"' >> /etc/openvpn/server.conf
+	echo 'push "route 172.16.0.0 255.240.0.0 net_gateway"' >> /etc/openvpn/server.conf
+	echo 'push "route 192.168.0.0 255.255.0.0 net_gateway"' >> /etc/openvpn/server.conf
 	# DNS
 	case "$DNS" in
 		1)
@@ -335,6 +340,8 @@ keysize 256
 comp-lzo
 persist-key
 persist-tun
+user nobody
+group nogroup
 status openvpn-status.log
 log-append /var/log/openvpn.log
 verb 3
