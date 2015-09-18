@@ -38,6 +38,7 @@ fi
 
 newclient () {
 	# Generates the client.ovpn
+	mkdir -p ~/ovpn/
 	cp /usr/share/doc/openvpn*/*ample*/sample-config-files/client.conf ~/ovpn/"$1".ovpn
 	sed -i "/ca ca.crt/d" ~/ovpn/"$1".ovpn
 	sed -i "/cert client.crt/d" ~/ovpn/"$1".ovpn
