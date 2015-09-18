@@ -44,7 +44,10 @@ newclient () {
 	cp /etc/openvpn/client-common.txt ~/ovpn/"$1"_local.ovpn
 	echo "route-nopull" >> ~/ovpn/"$1"_local.ovpn
 	echo "route remote_host 255.255.255.255 net_gateway" >> ~/ovpn/"$1"_local.ovpn
-	echo "route 172.16.69.0 255.255.255.0 vpn_gateway" >> ~/ovpn/"$1"_local.ovpn
+	echo "route 172.16.64.0 255.255.255.0 vpn_gateway" >> ~/ovpn/"$1"_local.ovpn
+	if [[ -f /etc/openvpn/server443.conf ]]; then
+		echo "route 172.16.65.0 255.255.255.0 vpn_gateway" >> ~/ovpn/"$1"_local.ovpn
+	fi
 	echo "<ca>" >> ~/ovpn/"$1"_local.ovpn
 	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/ovpn/"$1"_local.ovpn
 	echo "</ca>" >> ~/ovpn/"$1"_local.ovpn
@@ -72,6 +75,7 @@ gensslserver() {
 	cp -f /etc/openvpn/server.conf /etc/openvpn/server443.conf
 	sed -i "s|port 1194|port 443|" /etc/openvpn/server443.conf
 	sed -i "s|proto udp|proto tcp|" /etc/openvpn/server443.conf
+	sed -i "s|server 172.16.64.0 255.255.255.0|server 172.16.65.0 255.255.255.0|" /etc/openvpn/server443.conf
 }
 
 # Try to get our IP from the system and fallback to the Internet.
@@ -159,9 +163,9 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 				if pgrep firewalld; then
 					# Using both permanent and not permanent rules to avoid a firewalld reload.
 					firewall-cmd --zone=public --remove-port=$PORT/udp
-					firewall-cmd --zone=trusted --remove-source=172.16.69.0/24
+					firewall-cmd --zone=trusted --remove-source=172.16.64.0/24
 					firewall-cmd --permanent --zone=public --remove-port=$PORT/udp
-					firewall-cmd --permanent --zone=trusted --remove-source=172.16.69.0/24
+					firewall-cmd --permanent --zone=trusted --remove-source=172.16.64.0/24
 				fi
 				if [[ "$OS" = 'debian' ]]; then
 					apt-get remove --purge -y openvpn openvpn-blacklist
@@ -279,7 +283,7 @@ cert server.crt
 key server.key
 dh dh.pem
 topology subnet
-server 172.16.69.0 255.255.255.0
+server 172.16.64.0 255.255.255.0
 ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
 	echo 'push "redirect-gateway def1 bypass-dhcp"' >> /etc/openvpn/server.conf
 	echo 'push "route 10.0.0.0 255.0.0.0 net_gateway"' >> /etc/openvpn/server.conf
@@ -355,27 +359,40 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 		iptables -P FORWARD DROP
 		iptables -P OUTPUT ACCEPT
 		iptables -I INPUT -p udp --dport "$PORT" -j ACCEPT
-		iptables -I FORWARD -s 172.16.69.0/24 -j ACCEPT
+		iptables -I FORWARD -s 172.16.64.0/24 -j ACCEPT
+		if [[ "$SSLPORT" = 'y' ]]; then
+			iptables -I FORWARD -s 172.16.65.0/24 -j ACCEPT
+		fi
 		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 		iptables -A POSTROUTING -j MASQUERADE
 	fi
 	# Set NAT for the VPN subnet
-	iptables -t nat -A POSTROUTING -s 172.16.69.0/24 -j SNAT --to "$IP"
+	iptables -t nat -A POSTROUTING -s 172.16.64.0/24 -j SNAT --to "$IP"
+	if [[ "$SSLPORT" = 'y' ]]; then
+		iptables -t nat -A POSTROUTING -s 172.16.65.0/24 -j SNAT --to "$IP"
+	fi
 	if pgrep firewalld; then
 		# We don't use --add-service=openvpn because that would only work with
 		# the default port. Using both permanent and not permanent rules to
 		# avoid a firewalld reload.
 		firewall-cmd --zone=public --add-port=$PORT/udp
-		firewall-cmd --zone=trusted --add-source=172.16.69.0/24
+		firewall-cmd --zone=trusted --add-source=172.16.64.0/24		
 		firewall-cmd --permanent --zone=public --add-port=$PORT/udp
-		firewall-cmd --permanent --zone=trusted --add-source=172.16.69.0/24
+		firewall-cmd --permanent --zone=trusted --add-source=172.16.64.0/24
+		if [[ "$SSLPORT" = 'y' ]]; then
+			firewall-cmd --zone=trusted --add-source=172.16.65.0/24
+			firewall-cmd --permanent --zone=trusted --add-source=172.16.65.0/24
+		fi
 	fi
 	if ([iptables -L | grep -q REJECT] || [iptables -L | grep -q DROP]) && [[ "$RESET_IPTABLES" = 'n' ]]; then
 		# If iptables has at least one BLOCK rule, we asume this is needed.
 		# Not the best approach but I can't think of other and this shouldn't
 		# cause problems.
 		iptables -I INPUT -p udp --dport "$PORT" -j ACCEPT
-		iptables -I FORWARD -s 172.16.69.0/24 -j ACCEPT
+		iptables -I FORWARD -s 172.16.64.0/24 -j ACCEPT
+		if [[ "$SSLPORT" = 'y' ]]; then
+			iptables -I FORWARD -s 172.16.65.0/24 -j ACCEPT
+		fi
 		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 	fi
 	# Listen at port 53 too if user wants that
