@@ -288,6 +288,8 @@ dh dh.pem
 topology subnet
 server 172.16.69.0 255.255.255.0
 ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
+	echo 'push "route 10.0.0.0 255.0.0.0 net_gateway"' >> /etc/openvpn/server.conf
+	echo 'push "route 192.168.0.0 255.255.0.0 net_gateway"' >> /etc/openvpn/server.conf
 	echo 'push "redirect-gateway def1 bypass-dhcp"' >> /etc/openvpn/server.conf
 	# DNS
 	case "$DNS" in
