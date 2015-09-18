@@ -163,13 +163,6 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 					firewall-cmd --permanent --zone=public --remove-port=$PORT/udp
 					firewall-cmd --permanent --zone=trusted --remove-source=172.16.69.0/24
 				fi
-				if iptables -L | grep -q REJECT; then
-					sed -i '/--dport 53 -j REDIRECT --to-port/d' $RCLOCAL
-					sed -i "/iptables -I INPUT -p udp --dport $PORT -j ACCEPT/d" $RCLOCAL
-					sed -i "/iptables -I FORWARD -s 172.16.69.0\/24 -j ACCEPT/d" $RCLOCAL
-					sed -i "/iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT/d" $RCLOCAL
-				fi
-				sed -i '/iptables -t nat -A POSTROUTING -s 172.16.69.0\/24 -j SNAT --to /d' $RCLOCAL
 				if [[ "$OS" = 'debian' ]]; then
 					apt-get remove --purge -y openvpn openvpn-blacklist
 				else
@@ -321,11 +314,6 @@ ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
 		echo 'push "dhcp-option DNS 8.8.4.4"' >> /etc/openvpn/server.conf
 		;;
 	esac
-	# Listen at port 53 too if user wants that
-	if [[ "$ALTPORT" = 'y' ]]; then
-		iptables -t nat -A PREROUTING -p udp -d "$IP" --dport 53 -j REDIRECT --to-port "$PORT"
-		sed -i "1 a\iptables -t nat -A PREROUTING -p udp -d $IP --dport 53 -j REDIRECT --to-port $PORT" $RCLOCAL
-	fi
 	if [[ $"DUPLICATE_CN" = 'y' ]]; then
 		echo "duplicate-cn" >> /etc/openvpn/server.conf
 	fi
@@ -355,6 +343,7 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 	fi
 	# Avoid an unneeded reboot
 	echo 1 > /proc/sys/net/ipv4/ip_forward
+	# Reset iptable if needed
 	if [[ "$RESET_IPTABLES" = 'y' ]]; then
 		iptables -F
 		iptables -X
@@ -365,10 +354,13 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 		iptables -P INPUT ACCEPT
 		iptables -P FORWARD DROP
 		iptables -P OUTPUT ACCEPT
+		iptables -I INPUT -p udp --dport "$PORT" -j ACCEPT
+		iptables -I FORWARD -s 172.16.69.0/24 -j ACCEPT
+		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+		iptables -A POSTROUTING -j MASQUERADE
 	fi
 	# Set NAT for the VPN subnet
 	iptables -t nat -A POSTROUTING -s 172.16.69.0/24 -j SNAT --to "$IP"
-	sed -i "1 a\iptables -t nat -A POSTROUTING -s 172.16.69.0/24 -j SNAT --to $IP" $RCLOCAL
 	if pgrep firewalld; then
 		# We don't use --add-service=openvpn because that would only work with
 		# the default port. Using both permanent and not permanent rules to
@@ -378,20 +370,31 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 		firewall-cmd --permanent --zone=public --add-port=$PORT/udp
 		firewall-cmd --permanent --zone=trusted --add-source=172.16.69.0/24
 	fi
-	if iptables -L | grep -q REJECT; then
-		# If iptables has at least one REJECT rule, we asume this is needed.
+	if ([iptables -L | grep -q REJECT] || [iptables -L | grep -q DROP]) && [[ "$RESET_IPTABLES" = 'n' ]]; then
+		# If iptables has at least one BLOCK rule, we asume this is needed.
 		# Not the best approach but I can't think of other and this shouldn't
 		# cause problems.
 		iptables -I INPUT -p udp --dport "$PORT" -j ACCEPT
 		iptables -I FORWARD -s 172.16.69.0/24 -j ACCEPT
 		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
-		sed -i "1 a\iptables -I INPUT -p udp --dport $PORT -j ACCEPT" $RCLOCAL
-		sed -i "1 a\iptables -I FORWARD -s 172.16.69.0/24 -j ACCEPT" $RCLOCAL
-		sed -i "1 a\iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT" $RCLOCAL
 	fi
+	# Listen at port 53 too if user wants that
+	if [[ "$ALTPORT" = 'y' ]]; then
+		iptables -t nat -A PREROUTING -p udp -d "$IP" --dport 53 -j REDIRECT --to-port "$PORT"
+	fi	
 	# If user want ssl server
 	if [[ "$SSLPORT" = 'y' ]]; then
+		iptables -I INPUT -p tcp --dport 443 -j ACCEPT
 		gensslserver
+	fi
+	# Saving iptables permanently
+	if [[ "$OS" = 'debian' ]]; then
+		mv /etc/network/iptables.up.rules /etc/network/iptables.up.rules.backup
+		iptables-save > /etc/network/iptables.up.rules
+		mv /etc/iptables.up.rules /etc/iptables.up.rules.backup
+		ln -s /etc/network/iptables.up.rules /etc/iptables.up.rules
+	else
+		iptables-save > /etc/sysconfig/iptables
 	fi
 	# And finally, restart OpenVPN
 	if [[ "$OS" = 'debian' ]]; then
