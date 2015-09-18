@@ -45,10 +45,6 @@ newclient () {
 	echo "route-nopull" >> ~/ovpn/"$1"_local.ovpn
 	echo "route remote_host 255.255.255.255 net_gateway" >> ~/ovpn/"$1"_local.ovpn
 	echo "route 172.16.69.0 255.255.255.0 vpn_gateway" >> ~/ovpn/"$1"_local.ovpn
-	echo "route 0.0.0.0 192.0.0.0 net_gateway" >> ~/ovpn/"$1"_local.ovpn
-	echo "route 64.0.0.0 192.0.0.0 net_gateway" >> ~/ovpn/"$1"_local.ovpn
-	echo "route 128.0.0.0 192.0.0.0 net_gateway" >> ~/ovpn/"$1"_local.ovpn
-	echo "route 192.0.0.0 192.0.0.0 net_gateway" >> ~/ovpn/"$1"_local.ovpn
 	echo "<ca>" >> ~/ovpn/"$1"_local.ovpn
 	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/ovpn/"$1"_local.ovpn
 	echo "</ca>" >> ~/ovpn/"$1"_local.ovpn
