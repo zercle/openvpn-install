@@ -76,6 +76,7 @@ gensslserver() {
 	sed -i "s|port 1194|port 443|" /etc/openvpn/server443.conf
 	sed -i "s|proto udp|proto tcp|" /etc/openvpn/server443.conf
 	sed -i "s|server 172.16.64.0 255.255.255.0|server 172.16.65.0 255.255.255.0|" /etc/openvpn/server443.conf
+	sed -i "s|ifconfig-pool-persist ipp.txt|ifconfig-pool-persist ipp443.txt|" /etc/openvpn/server443.conf
 }
 
 # Try to get our IP from the system and fallback to the Internet.
@@ -208,6 +209,10 @@ else
 	echo "This can be useful to connect under restrictive networks"
 	read -p "Listen at port 443 [y/n]: " -e -i y SSLPORT
 	echo ""
+	echo "Do you want to enable internal networking for the VPN?"
+	echo "This can allow VPN clients to communicate between them"
+	read -p "Allow internal networking [y/n]: " -e -i n INTERNALNETWORK
+	echo ""
 	echo "Do you want to enable multiple connection for single client cert?"
 	read -p "Allow multiple connection for single client cert [y/n]: " -e -i n DUPLICATE_CN
 	echo ""
@@ -318,9 +323,12 @@ ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
 		echo 'push "dhcp-option DNS 8.8.4.4"' >> /etc/openvpn/server.conf
 		;;
 	esac
-	if [[ $"DUPLICATE_CN" = 'y' ]]; then
+	if [[ "$DUPLICATE_CN" = 'y' ]]; then
 		echo "duplicate-cn" >> /etc/openvpn/server.conf
 	fi
+	if [[ "$INTERNALNETWORK" = 'y' ]]; then
+		echo "client-to-clent" >> /etc/openvpn/server.conf
+	else
 	echo "keepalive 10 120
 auth SHA256
 cipher AES-256-CBC
@@ -359,17 +367,19 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 		iptables -P FORWARD DROP
 		iptables -P OUTPUT ACCEPT
 		iptables -I INPUT -p udp --dport "$PORT" -j ACCEPT
-		iptables -I FORWARD -s 172.16.64.0/24 -j ACCEPT
-		if [[ "$SSLPORT" = 'y' ]]; then
-			iptables -I FORWARD -s 172.16.65.0/24 -j ACCEPT
-		fi
+		iptables -I FORWARD -i tun+ -j ACCEPT
 		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 		iptables -A POSTROUTING -j MASQUERADE
 	fi
 	# Set NAT for the VPN subnet
-	iptables -t nat -A POSTROUTING -s 172.16.64.0/24 -j SNAT --to "$IP"
-	if [[ "$SSLPORT" = 'y' ]]; then
-		iptables -t nat -A POSTROUTING -s 172.16.65.0/24 -j SNAT --to "$IP"
+	if [[ "$INTERNALNETWORK" = 'y' ]]; then
+		iptables -A POSTROUTING -j MASQUERADE
+	else
+		iptables -t nat -I POSTROUTING -s 172.16.64.0/24 -j SNAT --to "$IP"
+		if [[ "$SSLPORT" = 'y' ]]; then
+			iptables -t nat -I POSTROUTING -s 172.16.65.0/24 -j SNAT --to "$IP"
+		fi
+		iptables -A POSTROUTING -j MASQUERADE
 	fi
 	if pgrep firewalld; then
 		# We don't use --add-service=openvpn because that would only work with
@@ -389,10 +399,7 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 		# Not the best approach but I can't think of other and this shouldn't
 		# cause problems.
 		iptables -I INPUT -p udp --dport "$PORT" -j ACCEPT
-		iptables -I FORWARD -s 172.16.64.0/24 -j ACCEPT
-		if [[ "$SSLPORT" = 'y' ]]; then
-			iptables -I FORWARD -s 172.16.65.0/24 -j ACCEPT
-		fi
+		iptables -I FORWARD -i tun+ -j ACCEPT
 		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 	fi
 	# Listen at port 53 too if user wants that
