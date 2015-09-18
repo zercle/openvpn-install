@@ -424,10 +424,10 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 	echo "client
 dev tun
 proto udp
-remote $IP $PORT upd" > /etc/openvpn/client-common.txt
+remote $IP $PORT udp" > /etc/openvpn/client-common.txt
 	# If user want 53 server
 	if [[ "$ALTPORT" = 'y' ]]; then
-		echo "remote $IP 53 upd" >> /etc/openvpn/client-common.txt
+		echo "remote $IP 53 udp" >> /etc/openvpn/client-common.txt
 	fi
 	# If user want ssl server
 	if [[ "$SSLPORT" = 'y' ]]; then
