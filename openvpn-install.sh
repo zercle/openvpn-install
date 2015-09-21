@@ -217,6 +217,7 @@ else
 	read -p "Allow multiple connection for single client cert [y/n]: " -e -i n DUPLICATE_CN
 	echo ""
 	echo "Do you want to reset iptables?"
+	echo "Otherwise you need to add iptables rule manualy"
 	read -p "Reset iptables [y/n]: " -e -i y RESET_IPTABLES
 	echo ""
 	echo "What DNS do you want to use with the VPN?"
@@ -263,7 +264,7 @@ else
 		rm -rf /etc/openvpn/easy-rsa/
 	fi
 	# Get easy-rsa
-	wget --no-check-certificate -O ~/EasyRSA-3.0.0.tgz https://github.com/OpenVPN/easy-rsa/releases/download/3.0.0/EasyRSA-3.0.0.tgz
+	wget -O ~/EasyRSA-3.0.0.tgz https://github.com/OpenVPN/easy-rsa/releases/download/3.0.0/EasyRSA-3.0.0.tgz
 	tar xzf ~/EasyRSA-3.0.0.tgz -C ~/
 	mv ~/EasyRSA-3.0.0/ /etc/openvpn/
 	mv /etc/openvpn/EasyRSA-3.0.0/ /etc/openvpn/easy-rsa/
@@ -369,18 +370,18 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 		iptables -I INPUT -p udp --dport "$PORT" -j ACCEPT
 		iptables -I FORWARD -i tun+ -j ACCEPT
 		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
-		iptables -A POSTROUTING -j MASQUERADE
-	fi
-	# Set NAT for the VPN subnet
-	if [[ "$INTERNALNETWORK" = 'y' ]]; then
-		iptables -A POSTROUTING -j MASQUERADE
-	else
-		iptables -t nat -I POSTROUTING -s 172.16.64.0/24 -j SNAT --to "$IP"
-		if [[ "$SSLPORT" = 'y' ]]; then
-			iptables -t nat -I POSTROUTING -s 172.16.65.0/24 -j SNAT --to "$IP"
+		# Set NAT for the VPN subnet
+		if [[ "$INTERNALNETWORK" = 'y' ]]; then
+			iptables -A POSTROUTING -j MASQUERADE
+		else
+			iptables -t nat -I POSTROUTING -s 172.16.64.0/24 -j SNAT --to "$IP"
+			if [[ "$SSLPORT" = 'y' ]]; then
+				iptables -t nat -I POSTROUTING -s 172.16.65.0/24 -j SNAT --to "$IP"
+			fi
+			iptables -A POSTROUTING -j MASQUERADE
 		fi
-		iptables -A POSTROUTING -j MASQUERADE
 	fi
+	
 	if pgrep firewalld; then
 		# We don't use --add-service=openvpn because that would only work with
 		# the default port. Using both permanent and not permanent rules to
@@ -393,14 +394,6 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 			firewall-cmd --zone=trusted --add-source=172.16.65.0/24
 			firewall-cmd --permanent --zone=trusted --add-source=172.16.65.0/24
 		fi
-	fi
-	if ([iptables -L | grep -q REJECT] || [iptables -L | grep -q DROP]) && [[ "$RESET_IPTABLES" = 'n' ]]; then
-		# If iptables has at least one BLOCK rule, we asume this is needed.
-		# Not the best approach but I can't think of other and this shouldn't
-		# cause problems.
-		iptables -I INPUT -p udp --dport "$PORT" -j ACCEPT
-		iptables -I FORWARD -i tun+ -j ACCEPT
-		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 	fi
 	# Listen at port 53 too if user wants that
 	if [[ "$ALTPORT" = 'y' ]]; then
@@ -480,4 +473,12 @@ verb 3" >> /etc/openvpn/client-common.txt
 	echo ""
 	echo "Your client config is available at ~/ovpn/$CLIENT.ovpn"
 	echo "If you want to add more clients, you simply need to run this script another time!"
+	if [[ "$RESET_IPTABLES" = 'n' ]]; then
+		echo "From not reset iptables rule you may need to add some rule manualy"
+		echo "iptables -I INPUT -p udp --dport $PORT -j ACCEPT"
+		echo "iptables -I INPUT -p udp --dport $PORT -j ACCEPT"
+		echo "iptables -I FORWARD -i tun+ -j ACCEPT"
+		echo "iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT"
+		echo "iptables -A POSTROUTING -j MASQUERADE"
+	fi
 fi
