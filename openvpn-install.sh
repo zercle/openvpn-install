@@ -7,7 +7,6 @@
 # your Debian/Ubuntu/CentOS box. It has been designed to be as unobtrusive and
 # universal as possible.
 
-
 if [[ "$USER" != 'root' ]]; then
 	echo "Sorry, you need to run this as root"
 	exit
@@ -18,7 +17,6 @@ if [[ ! -e /dev/net/tun ]]; then
 	echo "TUN/TAP is not available"
 	exit
 fi
-
 
 if grep -qs "CentOS release 5" "/etc/redhat-release"; then
 	echo "CentOS 5 is too old and not supported"
@@ -86,7 +84,6 @@ IP=$(ip addr | grep 'inet' | grep -v inet6 | grep -vE '127\.[0-9]{1,3}\.[0-9]{1,
 if [[ "$IP" = "" ]]; then
 		IP=$(wget -qO- ipv4.icanhazip.com)
 fi
-
 
 if [[ -e /etc/openvpn/server.conf ]]; then
 	while :
