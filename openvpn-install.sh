@@ -248,7 +248,7 @@ else
 	echo ""
 	echo "Okay, that was all I needed. We are ready to setup your OpenVPN server now"
 	read -n1 -r -p "Press any key to continue..."
-		if [[ "$OS" = 'debian' ]]; then
+	if [[ "$OS" = 'debian' ]]; then
 		apt-get update
 		apt-get install openvpn iptables openssl -y
 	else
@@ -326,7 +326,7 @@ ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
 	fi
 	if [[ "$INTERNALNETWORK" = 'y' ]]; then
 		echo "client-to-clent" >> /etc/openvpn/server.conf
-	else
+	fi
 	echo "keepalive 10 120
 auth SHA256
 cipher AES-256-CBC
