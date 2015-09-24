@@ -334,12 +334,19 @@ keysize 256
 comp-lzo
 persist-key
 persist-tun
-user nobody
-group nogroup
+user ovpnsv
+group ovpnsv
 status openvpn-status.log
 log-append /var/log/openvpn.log
 verb 3
 crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
+
+	# Fix file permission
+	useradd ovpnsv -s /sbin/nologin
+	chown -R ovpnsv /etc/openvpn/easy-rsa/pki/
+	find /etc/openvpn/easy-rsa/pki/ -type d -exec chmod 0700 {} \;
+	find /etc/openvpn/easy-rsa/pki/ -type f -exec chmod 0600 {} \;
+
 	# Enable net.ipv4.ip_forward for the system
 	if [[ "$OS" = 'debian' ]]; then
 		sed -i 's|#net.ipv4.ip_forward=1|net.ipv4.ip_forward=1|' /etc/sysctl.conf
