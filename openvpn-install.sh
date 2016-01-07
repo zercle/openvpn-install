@@ -7,8 +7,6 @@
 # your Debian/Ubuntu/CentOS box. It has been designed to be as unobtrusive and
 # universal as possible.
 
-RCLOCAL=''
-
 if [ "$(id -u)" != "0" ]
 then
 	echo "Sorry, you need to run this as root"
@@ -31,7 +29,8 @@ if [ -e /etc/debian_version ]
 then
 	OS=debian
 	RCLOCAL='/etc/rc.local'
-elif [[ -e /etc/centos-release || -e /etc/redhat-release ]]; then
+elif [ -e /etc/centos-release ] || [ -e /etc/redhat-release ]
+then
 	OS=centos
 	RCLOCAL='/etc/rc.d/rc.local'
 	# Needed for CentOS 7
@@ -110,8 +109,8 @@ then
 		echo "   2) Revoke existing user cert"
 		echo "   3) Remove OpenVPN"
 		echo "   4) Exit"
-		read -p "Select an option [1-4]: " option
-		case "$option" in
+		read -p "Select an option [1-4]: " OPTION
+		case "$OPTION" in
 			1)
 			echo ""
 			echo "Tell me a name for the client cert"
@@ -269,8 +268,8 @@ else
 	echo ""
 	echo "Okay, that was all I needed. We are ready to setup your OpenVPN server now"
 	read -n1 -p "Press any key to continue..."
-		if [ "$OS" = 'debian' ]
-		then
+	if [ "$OS" = 'debian' ]
+	then
 		apt-get update
 		apt-get install openvpn iptables openssl ca-certificates -y
 	else
@@ -383,7 +382,7 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 		# CentOS 5 and 6
 		sed -i 's|net.ipv4.ip_forward = 0|net.ipv4.ip_forward = 1|' /etc/sysctl.conf
 		# CentOS 7
-		if ! grep -q "net.ipv4.ip_forward=1" "/etc/sysctl.conf"
+		if ! grep -q "net.ipv4.ip_forward=1" "/etc/sysctl.conf";
 		then
 			echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
 		fi
@@ -459,14 +458,14 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 	if [ "$OS" = 'debian' ]
 	then
 		# Little hack to check for systemd
-		if pgrep systemd-journal
+		if pgrep systemd-journal;
 		then
 			systemctl restart openvpn@server.service
 		else
 			/etc/init.d/openvpn restart
 		fi
 	else
-		if pgrep systemd-journal
+		if pgrep systemd-journal;
 		then
 			systemctl restart openvpn@server.service
 			systemctl enable openvpn@server.service
@@ -533,6 +532,5 @@ verb 3" >> /etc/openvpn/client-common.txt
 		echo "iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT"
 		echo "iptables -A POSTROUTING -j MASQUERADE"
 	fi
-fi
 fi
 exit 0
