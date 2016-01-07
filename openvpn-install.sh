@@ -110,20 +110,20 @@ then
 		echo "   2) Revoke existing user cert"
 		echo "   3) Remove OpenVPN"
 		echo "   4) Exit"
-		read -p -r "Select an option [1-4]: " option
+		read -p "Select an option [1-4]: " option
 		case "$option" in
 			1)
 			echo ""
 			echo "Tell me a name for the client cert"
 			echo "Please, use one word only, no special characters"
-			read -p -r "Client name: " -e -i "client" CLIENT
-			read -p -r "Client COUNTRY: " -e -i "TH" CLIENT_COUNTRY
-			read -p -r "Client PROVINCE: " -e -i "Khon Kaen" CLIENT_PROVINCE
-			read -p -r "Client CITY: " -e -i "Muang" CLIENT_CITY
-			read -p -r "Client ORG: " -e -i "Dynamic Dev Co., Ltd." CLIENT_ORG
-			read -p -r "Client OU: " -e -i "Developer" CLIENT_OU
-			read -p -r "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
-			read -p -r "Client Cert expire time: " -e -i "365" CLIENT_EXPIRE
+			read -p "Client name: " -e -i "client" CLIENT
+			read -p "Client COUNTRY: " -e -i "TH" CLIENT_COUNTRY
+			read -p "Client PROVINCE: " -e -i "Khon Kaen" CLIENT_PROVINCE
+			read -p "Client CITY: " -e -i "Muang" CLIENT_CITY
+			read -p "Client ORG: " -e -i "Dynamic Dev Co., Ltd." CLIENT_ORG
+			read -p "Client OU: " -e -i "Developer" CLIENT_OU
+			read -p "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
+			read -p "Client Cert expire time: " -e -i "365" CLIENT_EXPIRE
 			cd /etc/openvpn/easy-rsa/ || exit 5
 			./easyrsa --dn-mode=org --days="$CLIENT_EXPIRE" --req-cn="$CLIENT" --req-c="$CLIENT_COUNTRY" --req-st="$CLIENT_PROVINCE" --req-city="$CLIENT_CITY" --req-org="$CLIENT_ORG" --req-email="$CLIENT_EMAIL" --req-ou="$CLIENT_OU" build-client-full "$CLIENT" nopass
 			# Generates the custom client.ovpn
@@ -146,9 +146,9 @@ then
 			tail -n +2 /etc/openvpn/easy-rsa/pki/index.txt | grep "^V" | cut -d '=' -f 2 | nl -s ') '
 			if [ "$NUMBEROFCLIENTS" = 1 ]
 			then
-				read -p -r "Select one client [1]: " CLIENTNUMBER
+				read -p "Select one client [1]: " CLIENTNUMBER
 			else
-				read -p -r "Select one client [1-$NUMBEROFCLIENTS]: " CLIENTNUMBER
+				read -p "Select one client [1-$NUMBEROFCLIENTS]: " CLIENTNUMBER
 			fi
 			CLIENT=$(tail -n +2 /etc/openvpn/easy-rsa/pki/index.txt | grep "^V" | cut -d '=' -f 2 | sed -n "$CLIENTNUMBER"p)
 			cd /etc/openvpn/easy-rsa/ || exit 8
@@ -174,7 +174,7 @@ then
 			exit 9;;
 			3) 
 			echo ""
-			read -p -r "Do you really want to remove OpenVPN? [y/n]: " -e -i "n" REMOVE
+			read -p "Do you really want to remove OpenVPN? [y/n]: " -e -i "n" REMOVE
 			if [ "$REMOVE" = 'y' ]
 			then
 				PORT=$(grep '^port ' /etc/openvpn/server.conf | cut -d " " -f 2)
@@ -214,29 +214,29 @@ else
 	echo ""
 	echo "First I need to know the IPv4 address of the network interface you want OpenVPN"
 	echo "listening to."
-	read -p -r "IP address: " -e -i "$IP" IP
+	read -p "IP address: " -e -i "$IP" IP
 	echo ""
 	echo "What port do you want for OpenVPN?"
-	read -p -r "Port: " -e -i 1194 PORT
+	read -p "Port: " -e -i 1194 PORT
 	echo ""
 	echo "Do you want OpenVPN to be available at port 53 too?"
 	echo "This can be useful to connect under restrictive networks"
-	read -p -r "Listen at port 53 [y/n]: " -e -i "n" ALTPORT
+	read -p "Listen at port 53 [y/n]: " -e -i "n" ALTPORT
 	echo ""
 	echo "Do you want OpenVPN to be available at port 443 too?"
 	echo "This can be useful to connect under restrictive networks"
-	read -p -r "Listen at port 443 [y/n]: " -e -i "y" SSLPORT
+	read -p "Listen at port 443 [y/n]: " -e -i "y" SSLPORT
 	echo ""
 	echo "Do you want to enable internal networking for the VPN?"
 	echo "This can allow VPN clients to communicate between them"
-	read -p -r "Allow internal networking [y/n]: " -e -i "n" INTERNALNETWORK
+	read -p "Allow internal networking [y/n]: " -e -i "n" INTERNALNETWORK
 	echo ""
 	echo "Do you want to enable multiple connection for single client cert?"
-	read -p -r "Allow multiple connection for single client cert [y/n]: " -e -i "n" DUPLICATE_CN
+	read -p "Allow multiple connection for single client cert [y/n]: " -e -i "n" DUPLICATE_CN
 	echo ""
 	echo "Do you want to reset iptables?"
 	echo "Otherwise you need to add iptables rule manualy"
-	read -p -r "Reset iptables [y/n]: " -e -i "y" RESET_IPTABLES
+	read -p "Reset iptables [y/n]: " -e -i "y" RESET_IPTABLES
 	echo ""
 	echo "What DNS do you want to use with the VPN?"
 	echo "   1) Current system resolvers"
@@ -245,30 +245,30 @@ else
 	echo "   4) OpenDNS"
 	echo "   5) Level 3"
 	echo "   6) Norton ConnectSafe + Google Public DNS"
-	read -p -r "DNS [1-6]: " -e -i 1 DNS
+	read -p "DNS [1-6]: " -e -i 1 DNS
 	echo ""
 	echo "Tell me detail for server cert"
 	echo "Please, use one word only, no special characters"
-	read -p -r "Server COUNTRY: " -e -i "TH" SERVER_COUNTRY
-	read -p -r "Server PROVINCE: " -e -i "Khon Kaen" SERVER_PROVINCE
-	read -p -r "Server CITY: " -e -i "Muang" SERVER_CITY
-	read -p -r "Server ORG: " -e -i "Dynamic Dev Co., Ltd." SERVER_ORG
-	read -p -r "Server OU: " -e -i "Server" SERVER_OU
-	read -p -r "Server Admin EMAIL: " -e -i "admin@domain.com" SERVER_EMAIL
+	read -p "Server COUNTRY: " -e -i "TH" SERVER_COUNTRY
+	read -p "Server PROVINCE: " -e -i "Khon Kaen" SERVER_PROVINCE
+	read -p "Server CITY: " -e -i "Muang" SERVER_CITY
+	read -p "Server ORG: " -e -i "Dynamic Dev Co., Ltd." SERVER_ORG
+	read -p "Server OU: " -e -i "Server" SERVER_OU
+	read -p "Server Admin EMAIL: " -e -i "admin@domain.com" SERVER_EMAIL
 	echo ""
 	echo "Finally, tell me your name for the client cert"
 	echo "Please, use one word only, no special characters"
-	read -p -r "Client name: " -e -i "client" CLIENT
-	read -p -r "Client COUNTRY: " -e -i "TH" CLIENT_COUNTRY
-	read -p -r "Client PROVINCE: " -e -i "Khon Kaen" CLIENT_PROVINCE
-	read -p -r "Client CITY: " -e -i "Muang" CLIENT_CITY
-	read -p -r "Client ORG: " -e -i "Dynamic Dev Co., Ltd." CLIENT_ORG
-	read -p -r "Client OU: " -e -i "Developer" CLIENT_OU
-	read -p -r "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
-	read -p -r "Client Cert expire time: " -e -i "365" CLIENT_EXPIRE
+	read -p "Client name: " -e -i "client" CLIENT
+	read -p "Client COUNTRY: " -e -i "TH" CLIENT_COUNTRY
+	read -p "Client PROVINCE: " -e -i "Khon Kaen" CLIENT_PROVINCE
+	read -p "Client CITY: " -e -i "Muang" CLIENT_CITY
+	read -p "Client ORG: " -e -i "Dynamic Dev Co., Ltd." CLIENT_ORG
+	read -p "Client OU: " -e -i "Developer" CLIENT_OU
+	read -p "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
+	read -p "Client Cert expire time: " -e -i "365" CLIENT_EXPIRE
 	echo ""
 	echo "Okay, that was all I needed. We are ready to setup your OpenVPN server now"
-	read -n1 -r -p "Press any key to continue..."
+	read -n1 -p "Press any key to continue..."
 		if [ "$OS" = 'debian' ]
 		then
 		apt-get update
@@ -288,7 +288,7 @@ else
 	tar xzf ~/EasyRSA-3.0.1.tgz -C ~/
 	mv ~/EasyRSA-3.0.1/ /etc/openvpn/
 	mv /etc/openvpn/EasyRSA-3.0.1/ /etc/openvpn/easy-rsa/
-	chown -R root:root /etc/openvpn/easy-rsa/
+	chown root:root /etc/openvpn/easy-rsa/
 	rm -rf ~/EasyRSA-3.0.1.tgz
 	cd /etc/openvpn/easy-rsa/ || exit 11
 	# Create the PKI, set up the CA, the DH params and the server + client certificates
@@ -323,7 +323,7 @@ ifconfig-pool-persist ipp.txt"
 	case "$DNS" in
 		1)
 		# Obtain the resolvers from resolv.conf and use them for OpenVPN
-		grep -v '#' /etc/resolv.conf | grep 'nameserver' | grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | while read -r line; do
+		grep -v '#' /etc/resolv.conf | grep 'nameserver' | grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | while read line; do
 			echo "push \"dhcp-option DNS $line\"" >> /etc/openvpn/server.conf
 		done;;
 		2)
@@ -371,7 +371,7 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 
 	# Fix file permission
 	useradd ovpnsv -s /sbin/nologin
-	chown -R ovpnsv /etc/openvpn/easy-rsa/pki/
+	chown ovpnsv /etc/openvpn/easy-rsa/pki/
 	find /etc/openvpn/easy-rsa/pki/ -type d -exec chmod 0700 {} \;
 	find /etc/openvpn/easy-rsa/pki/ -type f -exec chmod 0600 {} \;
 
@@ -484,7 +484,7 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 		echo ""
 		echo "If your server is NATed (LowEndSpirit), I need to know the external IP"
 		echo "If that's not the case, just ignore this and leave the next field blank"
-		read -p -r "External IP: " -e USEREXTERNALIP
+		read -p "External IP: " -e USEREXTERNALIP
 		if [ "$USEREXTERNALIP" != "" ]
 		then
 			IP="$USEREXTERNALIP"
