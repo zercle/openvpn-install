@@ -339,7 +339,7 @@ ifconfig-pool-persist ipp.txt"
 		echo "duplicate-cn" >> /etc/openvpn/server.conf
 	fi
 	if [[ "$INTERNALNETWORK" = 'y' ]]; then
-		echo "client-to-clent" >> /etc/openvpn/server.conf
+		echo "client-to-client" >> /etc/openvpn/server.conf
 	else
 	echo "keepalive 10 120
 auth SHA256
