@@ -340,7 +340,7 @@ ifconfig-pool-persist ipp.txt"
 	fi
 	if [[ "$INTERNALNETWORK" = 'y' ]]; then
 		echo "client-to-client" >> /etc/openvpn/server.conf
-	else
+	fi
 	echo "keepalive 10 120
 auth SHA256
 cipher AES-256-CBC
@@ -354,7 +354,7 @@ status openvpn-status.log
 log-append /var/log/openvpn.log
 verb 3
 crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
-    fi
+    
 	# Fix file permission
 	useradd ovpnsv -s /sbin/nologin
 	chown ovpnsv /etc/openvpn/easy-rsa/pki/
