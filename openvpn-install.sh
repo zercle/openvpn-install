@@ -111,7 +111,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			read -r -p "Client COUNTRY: " -e -i "TH" CLIENT_COUNTRY
 			read -r -p "Client PROVINCE: " -e -i "Khon Kaen" CLIENT_PROVINCE
 			read -r -p "Client CITY: " -e -i "Muang" CLIENT_CITY
-			read -r -p "Client ORG: " -e -i "Dynamic Dev Co., Ltd." CLIENT_ORG
+			read -r -p "Client ORG: " -e -i "zercle tech Co., Ltd." CLIENT_ORG
 			read -r -p "Client OU: " -e -i "Developer" CLIENT_OU
 			read -r -p "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
 			read -r -p "Client Cert expire time: " -e -i "365" CLIENT_EXPIRE
@@ -134,13 +134,13 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			fi
 			echo ""
 			echo "Select the existing client certificate you want to revoke"
-			tail -n +2 /etc/openvpn/easy-rsa/pki/index.txt | grep "^V" | cut -d '=' -f 2 | nl -s ') '
+			tail -n +2 /etc/openvpn/easy-rsa/pki/index.txt | grep "^V" | cut -d '=' -f 7  | cut -d '/' -f 1 | nl -s ') '
 			if [[ "$NUMBEROFCLIENTS" = 1 ]]; then
 				read -r -p "Select one client [1]: " CLIENTNUMBER
 			else
 				read -r -p "Select one client [1-$NUMBEROFCLIENTS]: " CLIENTNUMBER
 			fi
-			CLIENT=$(tail -n +2 /etc/openvpn/easy-rsa/pki/index.txt | grep "^V" | cut -d '=' -f 2 | sed -n "$CLIENTNUMBER"p)
+			CLIENT=$(tail -n +2 /etc/openvpn/easy-rsa/pki/index.txt | grep "^V" | cut -d '=' -f 7 | cut -d '/' -f 1 | sed -n "$CLIENTNUMBER"p)
 			cd /etc/openvpn/easy-rsa/ || exit 8
 			./easyrsa --batch revoke "$CLIENT"
 			./easyrsa gen-crl
@@ -241,7 +241,7 @@ else
 	read -r -p "Server COUNTRY: " -e -i "TH" SERVER_COUNTRY
 	read -r -p "Server PROVINCE: " -e -i "Khon Kaen" SERVER_PROVINCE
 	read -r -p "Server CITY: " -e -i "Muang" SERVER_CITY
-	read -r -p "Server ORG: " -e -i "Dynamic Dev Co., Ltd." SERVER_ORG
+	read -r -p "Server ORG: " -e -i "zercle tech Co., Ltd." SERVER_ORG
 	read -r -p "Server OU: " -e -i "Server" SERVER_OU
 	read -r -p "Server Admin EMAIL: " -e -i "admin@domain.com" SERVER_EMAIL
 	echo ""
@@ -251,7 +251,7 @@ else
 	read -r -p "Client COUNTRY: " -e -i "TH" CLIENT_COUNTRY
 	read -r -p "Client PROVINCE: " -e -i "Khon Kaen" CLIENT_PROVINCE
 	read -r -p "Client CITY: " -e -i "Muang" CLIENT_CITY
-	read -r -p "Client ORG: " -e -i "Dynamic Dev Co., Ltd." CLIENT_ORG
+	read -r -p "Client ORG: " -e -i "zercle tech Co., Ltd." CLIENT_ORG
 	read -r -p "Client OU: " -e -i "Developer" CLIENT_OU
 	read -r -p "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
 	read -r -p "Client Cert expire time: " -e -i "365" CLIENT_EXPIRE
