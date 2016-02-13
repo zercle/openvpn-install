@@ -36,16 +36,16 @@ else
 fi
 
 newClient() {
-	# Local client
+	# Split client
 	mkdir -p ~/ovpn/
-	cp /etc/openvpn/client-common.txt ~/ovpn/"$1"_local.ovpn
+	cp /etc/openvpn/client-common.txt ~/ovpn/"$1"_split.ovpn
 	{
 	echo "route-nopull"
 	echo "route remote_host 255.255.255.255 net_gateway"
 	echo "route 172.16.64.0 255.255.255.0 vpn_gateway"
-	} >> ~/ovpn/"$1"_local.ovpn
+	} >> ~/ovpn/"$1"_split.ovpn
 	if [[ -f /etc/openvpn/server443.conf ]]; then
-		echo "route 172.16.65.0 255.255.255.0 vpn_gateway" >> ~/ovpn/"$1"_local.ovpn
+		echo "route 172.16.65.0 255.255.255.0 vpn_gateway" >> ~/ovpn/"$1"_split.ovpn
 	fi
 	{
 	echo "<ca>"
@@ -57,9 +57,9 @@ newClient() {
 	echo "<key>"
 	cat /etc/openvpn/easy-rsa/pki/private/"$1".key
 	echo "</key>"
-	} >> ~/ovpn/"$1"_local.ovpn
-	# Internet client
-	cp /etc/openvpn/client-common.txt ~/ovpn/"$1"_inter.ovpn
+	} >> ~/ovpn/"$1"_split.ovpn
+	# Tunnel client
+	cp /etc/openvpn/client-common.txt ~/ovpn/"$1"_tunnel.ovpn
 	{
 	echo "<ca>"
 	cat /etc/openvpn/easy-rsa/pki/ca.crt
@@ -70,7 +70,7 @@ newClient() {
 	echo "<key>"
 	cat /etc/openvpn/easy-rsa/pki/private/"$1".key
 	echo "</key>"
-	} >> ~/ovpn/"$1"_inter.ovpn
+	} >> ~/ovpn/"$1"_tunnel.ovpn
 }
 
 # Copy udp server config and convert to 443 ssl server config
@@ -303,7 +303,7 @@ server 172.16.64.0 255.255.255.0
 ifconfig-pool-persist ipp.txt"
 	echo 'push "redirect-gateway def1 bypass-dhcp"'
 	echo 'push "route 10.0.0.0 255.0.0.0 net_gateway"'
-	echo 'push "route 172.16.0.0 255.240.0.0 net_gateway"'
+	echo '#push "route 172.16.0.0 255.240.0.0 net_gateway"'
 	echo 'push "route 192.168.0.0 255.255.0.0 net_gateway"'
 	} > /etc/openvpn/server.conf
 	# DNS
@@ -390,13 +390,13 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 		# Set NAT for the VPN subnet
 		if [[ "$INTERNALNETWORK" = 'y' ]]; then
-			iptables -A POSTROUTING -j MASQUERADE
+			iptables -t nat -A POSTROUTING -j MASQUERADE
 		else
 			iptables -t nat -I POSTROUTING -s 172.16.64.0/24 -j SNAT --to "$IP"
 			if [[ "$SSLPORT" = 'y' ]]; then
 				iptables -t nat -I POSTROUTING -s 172.16.65.0/24 -j SNAT --to "$IP"
 			fi
-			iptables -A POSTROUTING -j MASQUERADE
+			iptables -t nat -A POSTROUTING -j MASQUERADE
 		fi
 	fi
 
@@ -499,7 +499,7 @@ verb 3" >> /etc/openvpn/client-common.txt
 		echo "iptables -I INPUT -p udp --dport $PORT -j ACCEPT"
 		echo "iptables -I FORWARD -i tun+ -j ACCEPT"
 		echo "iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT"
-		echo "iptables -A POSTROUTING -j MASQUERADE"
+		echo "iptables -t nat -A POSTROUTING -j MASQUERADE"
 	fi
 fi
 exit 0
