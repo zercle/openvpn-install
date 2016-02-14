@@ -36,6 +36,10 @@ else
 fi
 
 newClient() {
+    # Fix file permission
+	chown -R ovpnsv /etc/openvpn/easy-rsa/pki/
+	find /etc/openvpn/easy-rsa/pki/ -type d -exec chmod 0700 {} \;
+	find /etc/openvpn/easy-rsa/pki/ -type f -exec chmod 0600 {} \;
 	# Split client
 	mkdir -p ~/ovpn/
 	cp /etc/openvpn/client-common.txt ~/ovpn/"$1"_split.ovpn
@@ -357,7 +361,7 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
     
 	# Fix file permission
 	useradd ovpnsv -s /sbin/nologin
-	chown ovpnsv /etc/openvpn/easy-rsa/pki/
+	chown -R ovpnsv /etc/openvpn/easy-rsa/pki/
 	find /etc/openvpn/easy-rsa/pki/ -type d -exec chmod 0700 {} \;
 	find /etc/openvpn/easy-rsa/pki/ -type f -exec chmod 0600 {} \;
 
