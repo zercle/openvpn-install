@@ -13,7 +13,7 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 if [[ ! -e /dev/net/tun ]]; then
-	echo "TUN/TAP is not available"
+	echo "TUN is not available"
 	exit 2
 fi
 
@@ -151,17 +151,6 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			rm -rf pki/reqs/"$CLIENT".req
 			rm -rf pki/private/"$CLIENT".key
 			rm -rf pki/issued/"$CLIENT".crt
-			# And restart
-			if pgrep systemd-journal;
-			then
-				systemctl restart openvpn@server.service
-			else
-				if [[ "$OS" = 'debian' ]]; then
-					/etc/init.d/openvpn restart
-				else
-					service openvpn restart
-				fi
-			fi
 			echo ""
 			echo "Certificate for client $CLIENT revoked"
 			exit 9
