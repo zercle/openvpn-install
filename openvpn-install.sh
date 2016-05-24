@@ -40,18 +40,14 @@ newClient() {
 	chown -R ovpnsv /etc/openvpn/easy-rsa/pki/
 	find /etc/openvpn/easy-rsa/pki/ -type d -exec chmod 0700 {} \;
 	find /etc/openvpn/easy-rsa/pki/ -type f -exec chmod 0600 {} \;
-	# Split client
 	mkdir -p ~/ovpn/
-	cp /etc/openvpn/client-common.txt ~/ovpn/"$1"_split.ovpn
+	cp /etc/openvpn/client-common.txt ~/ovpn/"$1".ovpn
 	{
-	echo "route-nopull"
-	echo "route remote_host 255.255.255.255 net_gateway"
-	echo "route 172.16.64.0 255.255.255.0 vpn_gateway"
-	} >> ~/ovpn/"$1"_split.ovpn
-	if [[ -f /etc/openvpn/server443.conf ]]; then
-		echo "route 172.16.65.0 255.255.255.0 vpn_gateway" >> ~/ovpn/"$1"_split.ovpn
-	fi
-	{
+	echo "# For split tunneling"
+	echo "#route-nopull"
+	echo "#route remote_host 255.255.255.255 net_gateway"
+	echo "#route 172.16.64.0 255.255.255.0 vpn_gateway"
+	echo "#route 172.16.65.0 255.255.255.0 vpn_gateway"
 	echo "<ca>"
 	cat /etc/openvpn/easy-rsa/pki/ca.crt
 	echo "</ca>"
@@ -61,29 +57,19 @@ newClient() {
 	echo "<key>"
 	cat /etc/openvpn/easy-rsa/pki/private/"$1".key
 	echo "</key>"
-	} >> ~/ovpn/"$1"_split.ovpn
-	# Tunnel client
-	cp /etc/openvpn/client-common.txt ~/ovpn/"$1"_tunnel.ovpn
-	{
-	echo "<ca>"
-	cat /etc/openvpn/easy-rsa/pki/ca.crt
-	echo "</ca>"
-	echo "<cert>"
-	cat /etc/openvpn/easy-rsa/pki/issued/"$1".crt
-	echo "</cert>"
-	echo "<key>"
-	cat /etc/openvpn/easy-rsa/pki/private/"$1".key
-	echo "</key>"
-	} >> ~/ovpn/"$1"_tunnel.ovpn
+	} >> ~/ovpn/"$1".ovpn
 }
 
 # Copy udp server config and convert to 443 ssl server config
 genSSLServer() {
-	cp -f /etc/openvpn/server.conf /etc/openvpn/server443.conf
-	sed -i "s|port 1194|port 443|" /etc/openvpn/server443.conf
-	sed -i "s|proto udp|proto tcp|" /etc/openvpn/server443.conf
-	sed -i "s|server 172.16.64.0 255.255.255.0|server 172.16.65.0 255.255.255.0|" /etc/openvpn/server443.conf
-	sed -i "s|ifconfig-pool-persist ipp.txt|ifconfig-pool-persist ipp443.txt|" /etc/openvpn/server443.conf
+	cp -f /etc/openvpn/server.conf /etc/openvpn/server_443.conf
+	sed -i "s|port 1194|port 443|" /etc/openvpn/server_443.conf
+	sed -i "s|proto udp|proto tcp|" /etc/openvpn/server_443.conf
+	sed -i "s|server 172.16.64.0 255.255.255.0|server 172.16.65.0 255.255.255.0|" /etc/openvpn/server_443.conf
+	sed -i "s|route 172.16.64.0|route 172.16.65.0|" /etc/openvpn/server_443.conf
+	sed -i "s|ifconfig-pool-persist ipp.txt|ifconfig-pool-persist ipp_443.txt|" /etc/openvpn/server_443.conf
+	sed -i "s|status openvpn-status.log|status openvpn-status_443.log|" /etc/openvpn/server_443.conf
+	sed -i "s|log-append /var/log/openvpn.log|log-append /var/log/openvpn_443.log|" /etc/openvpn/server_443.conf
 }
 
 # Try to get our IP from the system and fallback to the Internet.
@@ -293,6 +279,7 @@ key server.key
 dh dh.pem
 topology subnet
 server 172.16.64.0 255.255.255.0
+route 172.16.64.0/24
 ifconfig-pool-persist ipp.txt"
 	echo 'push "redirect-gateway def1 bypass-dhcp"'
 	echo 'push "route 10.0.0.0 255.0.0.0 net_gateway"'
@@ -428,12 +415,14 @@ crl-verify /etc/openvpn/easy-rsa/pki/crl.pem" >> /etc/openvpn/server.conf
 	if [[ "$OS" = 'debian' ]]; then
 		# Little hack to check for systemd
 		if pgrep systemd-journal; then
+			systemctl daemon-reload
 			systemctl restart openvpn@server.service
 		else
 			/etc/init.d/openvpn restart
 		fi
 	else
 		if pgrep systemd-journal; then
+			systemctl daemon-reload
 			systemctl restart openvpn@server.service
 			systemctl enable openvpn@server.service
 		else
