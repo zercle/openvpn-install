@@ -43,11 +43,15 @@ newClient() {
 	mkdir -p ~/ovpn/
 	cp /etc/openvpn/client-common.txt ~/ovpn/"$1".ovpn
 	{
+	echo "# For tunneling"
+	echo "route-nopull"
+	echo "route 0.0.0.0 128.0.0.0 vpn_gateway"
+	echo "route 128.0.0.0 128.0.0.0 vpn_gateway"
 	echo "# For split tunneling"
-	echo "#route-nopull"
-	echo "#route remote_host 255.255.255.255 net_gateway"
-	echo "#route 172.16.64.0 255.255.255.0 vpn_gateway"
-	echo "#route 172.16.65.0 255.255.255.0 vpn_gateway"
+	echo ";route-nopull"
+	echo ";route remote_host 255.255.255.255 net_gateway"
+	echo ";route 172.16.64.0 255.255.255.0 vpn_gateway"
+	echo ";route 172.16.65.0 255.255.255.0 vpn_gateway"
 	echo "<ca>"
 	cat /etc/openvpn/easy-rsa/pki/ca.crt
 	echo "</ca>"
@@ -100,8 +104,8 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			read -r -p "Client name: " -e -i "client" CLIENT
 			read -r -p "Client COUNTRY: " -e -i "TH" CLIENT_COUNTRY
 			read -r -p "Client PROVINCE: " -e -i "Khon Kaen" CLIENT_PROVINCE
-			read -r -p "Client CITY: " -e -i "Muang" CLIENT_CITY
-			read -r -p "Client ORG: " -e -i "zercle tech Co., Ltd." CLIENT_ORG
+			read -r -p "Client CITY: " -e -i "Muaeng Khon Kaen" CLIENT_CITY
+			read -r -p "Client ORG: " -e -i "Zercle Technology Co., Ltd." CLIENT_ORG
 			read -r -p "Client OU: " -e -i "Developer" CLIENT_OU
 			read -r -p "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
 			read -r -p "Client Cert expire time: " -e -i "365" CLIENT_EXPIRE
@@ -219,8 +223,8 @@ else
 	echo "Please, use one word only, no special characters"
 	read -r -p "Server COUNTRY: " -e -i "TH" SERVER_COUNTRY
 	read -r -p "Server PROVINCE: " -e -i "Khon Kaen" SERVER_PROVINCE
-	read -r -p "Server CITY: " -e -i "Muang" SERVER_CITY
-	read -r -p "Server ORG: " -e -i "zercle tech Co., Ltd." SERVER_ORG
+	read -r -p "Server CITY: " -e -i "Muaeng Khon Kaen" SERVER_CITY
+	read -r -p "Server ORG: " -e -i "Zercle Technology Co., Ltd." SERVER_ORG
 	read -r -p "Server OU: " -e -i "Server" SERVER_OU
 	read -r -p "Server Admin EMAIL: " -e -i "admin@domain.com" SERVER_EMAIL
 	echo ""
@@ -229,8 +233,8 @@ else
 	read -r -p "Client name: " -e -i "client" CLIENT
 	read -r -p "Client COUNTRY: " -e -i "TH" CLIENT_COUNTRY
 	read -r -p "Client PROVINCE: " -e -i "Khon Kaen" CLIENT_PROVINCE
-	read -r -p "Client CITY: " -e -i "Muang" CLIENT_CITY
-	read -r -p "Client ORG: " -e -i "zercle tech Co., Ltd." CLIENT_ORG
+	read -r -p "Client CITY: " -e -i "Muaeng Khon Kaen" CLIENT_CITY
+	read -r -p "Client ORG: " -e -i "Zercle Technology Co., Ltd." CLIENT_ORG
 	read -r -p "Client OU: " -e -i "Developer" CLIENT_OU
 	read -r -p "Client EMAIL: " -e -i "user@domain.com" CLIENT_EMAIL
 	read -r -p "Client Cert expire time: " -e -i "365" CLIENT_EXPIRE
@@ -328,9 +332,9 @@ ifconfig-pool-persist ipp.txt"
 	fi
 	echo "keepalive 10 120
 auth SHA256
-cipher AES-256-CBC
+cipher AES-256-GCM
 keysize 256
-comp-lzo
+;comp-lzo
 persist-key
 persist-tun
 user ovpnsv
@@ -469,9 +473,9 @@ persist-key
 persist-tun
 remote-cert-tls server
 auth SHA256
-cipher AES-256-CBC
+cipher AES-256-GCM
 keysize 256
-comp-lzo
+;comp-lzo
 verb 3" >> /etc/openvpn/client-common.txt
 	# Generates the custom client.ovpn
 	newClient "$CLIENT"
