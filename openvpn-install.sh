@@ -45,6 +45,7 @@ newClient() {
 	{
 	echo "# For tunneling"
 	echo "route-nopull"
+	echo "route remote_host 255.255.255.255 net_gateway"
 	echo "route 0.0.0.0 128.0.0.0 vpn_gateway"
 	echo "route 128.0.0.0 128.0.0.0 vpn_gateway"
 	echo "# For split tunneling"
@@ -158,9 +159,9 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 					firewall-cmd --permanent --zone=trusted --remove-source=172.16.64.0/24
 				fi
 				if [[ "$OS" = 'debian' ]]; then
-					apt-get remove --purge -y openvpn openvpn-blacklist
+					apt-get -y remove --purge -y openvpn openvpn-blacklist
 				else
-					yum remove openvpn -y
+					yum -y remove openvpn
 				fi
 				rm -rf /etc/openvpn
 				rm -rf /usr/share/doc/openvpn*
@@ -242,12 +243,14 @@ else
 	echo "Okay, that was all I needed. We are ready to setup your OpenVPN server now"
 	read -n1 -p "Press any key to continue..."
 	if [[ "$OS" = 'debian' ]]; then
+		wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg | apt-key add -
+		echo "deb http://build.openvpn.net/debian/openvpn/stable $(lsb_release -sc) main" > /etc/apt/sources.list.d/openvpn-aptrepo.list
 		apt-get update
-		apt-get install openvpn iptables openssl ca-certificates -y
+		apt-get -y install openvpn iptables openssl ca-certificates
 	else
 		# Else, the distro is CentOS
-		yum install epel-release -y
-		yum install openvpn iptables openssl wget ca-certificates -y
+		yum -y install epel-release
+		yum -y install openvpn iptables openssl wget ca-certificates
 	fi
 	# An old version of easy-rsa was available by default in some openvpn packages
 	if [[ -d /etc/openvpn/easy-rsa/ ]]; then
