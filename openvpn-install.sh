@@ -285,10 +285,10 @@ proto udp
 dev tun
 sndbuf 0
 rcvbuf 0
-ca ca.crt
-cert server.crt
-key server.key
-dh dh.pem
+ca /etc/openvpn/ca.crt
+cert /etc/openvpn/server.crt
+key /etc/openvpn/server.key
+dh /etc/openvpn/dh.pem
 topology subnet
 server 172.16.64.0 255.255.255.0
 route 172.16.64.0/24
