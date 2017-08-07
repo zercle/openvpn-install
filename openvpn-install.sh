@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # OpenVPN road warrior installer for Debian, Ubuntu and CentOS
 
 # This script will work on Debian, Ubuntu, CentOS and probably other distros
@@ -259,10 +259,15 @@ else
 	cd /etc/openvpn/easy-rsa/ || exit 11
 	# Create the PKI, set up the CA, the DH params and the server + client certificates
 	./easyrsa init-pki
-	./easyrsa --dn-mode=org --req-cn=server --req-c="$SERVER_COUNTRY" --req-st="$SERVER_PROVINCE" --req-city="$SERVER_CITY" --req-org="$SERVER_ORG" --req-email="$SERVER_EMAIL" --req-ou="$SERVER_OU" --batch build-ca nopass
+	# Create CA
+	./easyrsa --dn-mode=org --req-cn=server --req-c="$SERVER_COUNTRY" --req-st="$SERVER_PROVINCE" --req-city="$SERVER_CITY" --req-org="$SERVER_ORG" --req-email="$SERVER_EMAIL" --req-ou="$SERVER_OU" --use-algo=ec --curve=secp384r1 --batch build-ca nopass
+	# Create DH params
 	./easyrsa gen-dh
-	./easyrsa --dn-mode=org --req-cn=server --req-c="$SERVER_COUNTRY" --req-st="$SERVER_PROVINCE" --req-city="$SERVER_CITY" --req-org="$SERVER_ORG" --req-email="$SERVER_EMAIL" --req-ou="$SERVER_OU" build-server-full server nopass
-	./easyrsa --dn-mode=org --days="$CLIENT_EXPIRE" --req-cn="$CLIENT" --req-c="$CLIENT_COUNTRY" --req-st="$CLIENT_PROVINCE" --req-city="$CLIENT_CITY" --req-org="$CLIENT_ORG" --req-email="$CLIENT_EMAIL" --req-ou="$CLIENT_OU" build-client-full "$CLIENT" nopass
+	# Create server cert
+	./easyrsa --dn-mode=org --req-cn=server --req-c="$SERVER_COUNTRY" --req-st="$SERVER_PROVINCE" --req-city="$SERVER_CITY" --req-org="$SERVER_ORG" --req-email="$SERVER_EMAIL" --req-ou="$SERVER_OU" --use-algo=ec --curve=secp384r1 build-server-full server nopass
+	# Create client cert
+	./easyrsa --dn-mode=org --days="$CLIENT_EXPIRE" --req-cn="$CLIENT" --req-c="$CLIENT_COUNTRY" --req-st="$CLIENT_PROVINCE" --req-city="$CLIENT_CITY" --req-org="$CLIENT_ORG" --req-email="$CLIENT_EMAIL" --req-ou="$CLIENT_OU" --use-algo=ec --curve=secp384r1 build-client-full "$CLIENT" nopass
+	# Create CRL
 	./easyrsa gen-crl
 	# Move the stuff we need
 	cp pki/ca.crt pki/private/ca.key pki/dh.pem pki/issued/server.crt pki/private/server.key /etc/openvpn
