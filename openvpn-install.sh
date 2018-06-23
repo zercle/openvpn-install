@@ -8,18 +8,18 @@
 # Detect Debian users running the script with "sh" instead of bash
 if readlink /proc/$$/exe | grep -q "dash"; then
 	echo "This script needs to be run with bash, not sh"
-	exit
+	exit 0
 fi
 
 if [[ "$EUID" -ne 0 ]]; then
 	echo "Sorry, you need to run this as root"
-	exit
+	exit 0
 fi
 
 if [[ ! -e /dev/net/tun ]]; then
 	echo "The TUN device is not available
 You need to enable TUN before running this script"
-	exit
+	exit 0
 fi
 
 if [[ -e /etc/debian_version ]]; then
@@ -32,10 +32,16 @@ elif [[ -e /etc/centos-release || -e /etc/redhat-release ]]; then
 	RCLOCAL='/etc/rc.d/rc.local'
 else
 	echo "Looks like you aren't running this installer on Debian, Ubuntu or CentOS"
-	exit
+	exit 0
 fi
 
 # Set easyrsa env
+setEasyrsa () {
+OPENSSL_PATH=$(which openssl)
+echo "set_var EASYRSA_OPENSSL \"${OPENSSL_PATH}\"" > /etc/openvpn/easy-rsa/vars
+echo 'set_var EASYRSA "$PWD"
+set_var EASYRSA_PKI "$EASYRSA/pki"
+
 set_var EASYRSA_ALGO ec
 set_var EASYRSA_CURVE secp521r1
 set_var EASYRSA_DIGEST "sha512"
@@ -46,7 +52,8 @@ set_var EASYRSA_REQ_PROVINCE "Khon Kaen"
 set_var EASYRSA_REQ_CITY "Muaeng Khon Kaen"
 set_var EASYRSA_REQ_ORG "Zercle Technology Co., Ltd."
 set_var EASYRSA_REQ_EMAIL "user@domain.com"
-set_var EASYRSA_REQ_OU "System Divisions"
+set_var EASYRSA_REQ_OU "System Divisions"' >> /etc/openvpn/easy-rsa/vars
+}
 
 newclient () {
 	# Generates the custom client.ovpn
@@ -63,6 +70,7 @@ newclient () {
 	echo "<tls-auth>" >> ~/$1.ovpn
 	cat /etc/openvpn/ta.key >> ~/$1.ovpn
 	echo "</tls-auth>" >> ~/$1.ovpn
+	cd
 }
 
 if [[ -e /etc/openvpn/server.conf ]]; then
@@ -89,7 +97,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			newclient "$CLIENT"
 			echo
 			echo "Client $CLIENT added, configuration is available at:" ~/"$CLIENT.ovpn"
-			exit
+			exit 0
 			;;
 			2)
 			# This option could be documented a bit better and maybe even be simplified
@@ -98,7 +106,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			if [[ "$NUMBEROFCLIENTS" = '0' ]]; then
 				echo
 				echo "You have no existing clients!"
-				exit
+				exit 0
 			fi
 			echo
 			echo "Select the existing client certificate you want to revoke:"
@@ -128,7 +136,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 				echo
 				echo "Certificate revocation for client $CLIENT aborted!"
 			fi
-			exit
+			exit 0
 			;;
 			3) 
 			echo
@@ -174,9 +182,9 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 				echo
 				echo "Removal aborted!"
 			fi
-			exit
+			exit 0
 			;;
-			4) exit;;
+			4) exit 0;;
 		esac
 	done
 else
@@ -246,6 +254,8 @@ else
 	chown -R root:root /etc/openvpn/easy-rsa/
 	rm -f ~/easyrsa.tgz
 	cd /etc/openvpn/easy-rsa/
+	# set easy-rsa first time
+	setEasyrsa
 	# Create the PKI, set up the CA, the DH params and the server + client certificates
 	./easyrsa init-pki
 	./easyrsa --batch build-ca nopass
