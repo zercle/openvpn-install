@@ -282,6 +282,7 @@ dh dh.pem
 auth SHA512
 tls-auth ta.key 0
 topology subnet
+client-to-client
 server 10.8.0.0 255.255.255.0
 ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
 	echo 'push "redirect-gateway def1 bypass-dhcp"' >> /etc/openvpn/server.conf
@@ -404,7 +405,6 @@ sndbuf 0
 rcvbuf 0
 remote $IP $PORT
 resolv-retry infinite
-client-to-client
 nobind
 persist-key
 persist-tun
