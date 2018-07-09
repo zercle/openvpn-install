@@ -404,6 +404,7 @@ sndbuf 0
 rcvbuf 0
 remote $IP $PORT
 resolv-retry infinite
+client-to-client
 nobind
 persist-key
 persist-tun
