@@ -43,7 +43,7 @@ echo 'set_var EASYRSA "$PWD"
 set_var EASYRSA_PKI "$EASYRSA/pki"
 
 set_var EASYRSA_ALGO ec
-set_var EASYRSA_CURVE secp256r1
+set_var EASYRSA_CURVE prime256v1
 set_var EASYRSA_DIGEST "sha256"
 
 set_var EASYRSA_DN org
