@@ -43,8 +43,8 @@ echo 'set_var EASYRSA "$PWD"
 set_var EASYRSA_PKI "$EASYRSA/pki"
 
 set_var EASYRSA_ALGO ec
-set_var EASYRSA_CURVE secp521r1
-set_var EASYRSA_DIGEST "sha512"
+set_var EASYRSA_CURVE secp256r1
+set_var EASYRSA_DIGEST "sha256"
 
 set_var EASYRSA_DN org
 set_var EASYRSA_REQ_COUNTRY "TH"
@@ -279,7 +279,7 @@ ca ca.crt
 cert server.crt
 key server.key
 dh dh.pem
-auth SHA512
+auth SHA1
 tls-auth ta.key 0
 topology subnet
 client-to-client
@@ -409,7 +409,7 @@ nobind
 persist-key
 persist-tun
 remote-cert-tls server
-auth SHA512
+auth SHA1
 cipher AES-256-GCM
 tls-version-min 1.2
 tls-cipher TLS-ECDHE-ECDSA-WITH-AES-256-GCM-SHA384
