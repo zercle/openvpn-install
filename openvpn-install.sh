@@ -44,7 +44,6 @@ set_var EASYRSA_PKI "$EASYRSA/pki"
 
 set_var EASYRSA_ALGO ec
 set_var EASYRSA_CURVE prime256v1
-set_var EASYRSA_DIGEST "sha256"
 
 set_var EASYRSA_DN org
 set_var EASYRSA_REQ_COUNTRY "TH"
