@@ -277,7 +277,7 @@ rcvbuf 0
 ca ca.crt
 cert server.crt
 key server.key
-dh dh.pem
+dh none
 auth SHA1
 tls-auth ta.key 0
 topology subnet
