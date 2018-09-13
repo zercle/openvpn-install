@@ -404,6 +404,7 @@ sndbuf 0
 rcvbuf 0
 remote $IP $PORT
 resolv-retry infinite
+server-poll-timeout 8
 nobind
 persist-key
 persist-tun
