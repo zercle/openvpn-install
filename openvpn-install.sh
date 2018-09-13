@@ -56,19 +56,19 @@ set_var EASYRSA_REQ_OU "System Divisions"' >> /etc/openvpn/easy-rsa/vars
 
 newclient () {
 	# Generates the custom client.ovpn
-	cp /etc/openvpn/client-common.txt ~/$1.ovpn
-	echo "<ca>" >> ~/$1.ovpn
-	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/$1.ovpn
-	echo "</ca>" >> ~/$1.ovpn
-	echo "<cert>" >> ~/$1.ovpn
-	cat /etc/openvpn/easy-rsa/pki/issued/$1.crt >> ~/$1.ovpn
-	echo "</cert>" >> ~/$1.ovpn
-	echo "<key>" >> ~/$1.ovpn
-	cat /etc/openvpn/easy-rsa/pki/private/$1.key >> ~/$1.ovpn
-	echo "</key>" >> ~/$1.ovpn
-	echo "<tls-auth>" >> ~/$1.ovpn
-	cat /etc/openvpn/ta.key >> ~/$1.ovpn
-	echo "</tls-auth>" >> ~/$1.ovpn
+	cp /etc/openvpn/client-common.txt ~/ovpn/$1.ovpn
+	echo "<ca>" >> ~/ovpn/$1.ovpn
+	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/ovpn/$1.ovpn
+	echo "</ca>" >> ~/ovpn/$1.ovpn
+	echo "<cert>" >> ~/ovpn/$1.ovpn
+	cat /etc/openvpn/easy-rsa/pki/issued/$1.crt >> ~/ovpn/$1.ovpn
+	echo "</cert>" >> ~/ovpn/$1.ovpn
+	echo "<key>" >> ~/ovpn/$1.ovpn
+	cat /etc/openvpn/easy-rsa/pki/private/$1.key >> ~/ovpn/$1.ovpn
+	echo "</key>" >> ~/ovpn/$1.ovpn
+	echo "<tls-auth>" >> ~/ovpn/$1.ovpn
+	cat /etc/openvpn/ta.key >> ~/ovpn/$1.ovpn
+	echo "</tls-auth>" >> ~/ovpn/$1.ovpn
 	cd
 }
 
@@ -95,7 +95,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			# Generates the custom client.ovpn
 			newclient "$CLIENT"
 			echo
-			echo "Client $CLIENT added, configuration is available at:" ~/"$CLIENT.ovpn"
+			echo "Client $CLIENT added, configuration is available at:" ~/ovpn/"$CLIENT.ovpn"
 			exit 0
 			;;
 			2)
@@ -421,6 +421,6 @@ verb 3" > /etc/openvpn/client-common.txt
 	echo
 	echo "Finished!"
 	echo
-	echo "Your client configuration is available at:" ~/"$CLIENT.ovpn"
+	echo "Your client configuration is available at:" ~/ovpn/"$CLIENT.ovpn"
 	echo "If you want to add more clients, you simply need to run this script again!"
 fi
