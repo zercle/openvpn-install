@@ -36,7 +36,25 @@ else
 fi
 
 # Set easyrsa env
-setEasyrsa () {
+setEasyrsaRSA () {
+OPENSSL_PATH=$(which openssl)
+echo "set_var EASYRSA_OPENSSL \"${OPENSSL_PATH}\"" > /etc/openvpn/easy-rsa/vars
+echo 'set_var EASYRSA "$PWD"
+set_var EASYRSA_PKI "$EASYRSA/pki"
+
+set_var EASYRSA_ALGO rsa
+set_var EASYRSA_KEY_SIZE 2048
+
+set_var EASYRSA_DN org
+set_var EASYRSA_REQ_COUNTRY "TH"
+set_var EASYRSA_REQ_PROVINCE "Khon Kaen"
+set_var EASYRSA_REQ_CITY "Muaeng Khon Kaen"
+set_var EASYRSA_REQ_ORG "Zercle Technology Co., Ltd."
+set_var EASYRSA_REQ_EMAIL "user@domain.com"
+set_var EASYRSA_REQ_OU "System Divisions"' >> /etc/openvpn/easy-rsa/vars
+}
+
+setEasyrsaECDSA () {
 OPENSSL_PATH=$(which openssl)
 echo "set_var EASYRSA_OPENSSL \"${OPENSSL_PATH}\"" > /etc/openvpn/easy-rsa/vars
 echo 'set_var EASYRSA "$PWD"
@@ -245,16 +263,29 @@ else
 		yum install openvpn iptables openssl ca-certificates -y
 	fi
 	# Get easy-rsa
-	EASYRSAURL='https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.4/EasyRSA-3.0.4.tgz'
+	EASYRSAURL='https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.6/EasyRSA-nix-3.0.6.tgz'
 	wget -O ~/easyrsa.tgz "$EASYRSAURL" 2>/dev/null || curl -Lo ~/easyrsa.tgz "$EASYRSAURL"
 	tar xzf ~/easyrsa.tgz -C ~/
-	mv ~/EasyRSA-3.0.4/ /etc/openvpn/
-	mv /etc/openvpn/EasyRSA-3.0.4/ /etc/openvpn/easy-rsa/
+	mv ~/EasyRSA-3.0.6/ /etc/openvpn/
+	mv /etc/openvpn/EasyRSA-3.0.6/ /etc/openvpn/easy-rsa/
 	chown -R root:root /etc/openvpn/easy-rsa/
 	rm -f ~/easyrsa.tgz
 	cd /etc/openvpn/easy-rsa/
 	# set easy-rsa first time
-	setEasyrsa
+	echo
+	echo "Which crypto mode do you want for OpenVPN connections?"
+	echo "   1) RSA (recommended)"
+	echo "   2) ECDSA"
+	read -p "Protocol [1-2]: " -e -i 1 CRYPMODE
+	case $CRYPMODE in
+		1) 
+		setEasyrsaRSA
+		;;
+		2) 
+		setEasyrsaECDSA
+		;;
+	esac
+	echo
 	# Create the PKI, set up the CA, the DH params and the server + client certificates
 	./easyrsa init-pki
 	./easyrsa --batch build-ca nopass
@@ -283,6 +314,9 @@ tls-auth ta.key 0
 topology subnet
 client-to-client
 server 172.16.31.0 255.255.255.0
+tun-mtu 9000
+fragment 0
+mssfix 0
 ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
 	echo 'push "redirect-gateway def1 bypass-dhcp"' >> /etc/openvpn/server.conf
 	# DNS
@@ -319,7 +353,6 @@ ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
 	esac
 	echo "keepalive 10 120
 tls-version-min 1.2
-tls-cipher TLS-ECDHE-ECDSA-WITH-AES-256-GCM-SHA384:TLS-ECDHE-ECDSA-WITH-CHACHA20-POLY1305-SHA256
 cipher AES-256-GCM
 comp-lzo
 user nobody
@@ -405,6 +438,9 @@ rcvbuf 0
 remote $IP $PORT
 resolv-retry infinite
 server-poll-timeout 8
+tun-mtu 9000
+fragment 0
+mssfix 0
 nobind
 persist-key
 persist-tun
@@ -412,7 +448,6 @@ remote-cert-tls server
 auth SHA1
 cipher AES-256-GCM
 tls-version-min 1.2
-tls-cipher TLS-ECDHE-ECDSA-WITH-AES-256-GCM-SHA384:TLS-ECDHE-ECDSA-WITH-CHACHA20-POLY1305-SHA256
 comp-lzo
 setenv opt block-outside-dns
 key-direction 1
